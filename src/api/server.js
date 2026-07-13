@@ -1,0 +1,120 @@
+'use strict';
+
+require('dotenv').config();
+const express    = require('express');
+const helmet     = require('helmet');
+const cors       = require('cors');
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const morgan     = require('morgan');
+const path       = require('path');
+const { PrismaClient } = require('@prisma/client');
+
+// ── Routes ────────────────────────────────────────────────────────
+const authRoutes       = require('./routes/auth');
+const aiRoutes         = require('./routes/ai');
+const subscriptionRoutes = require('./routes/subscriptions');
+const userRoutes       = require('./routes/users');
+const webhookRoutes    = require('./routes/webhooks');
+const complianceRoutes = require('./routes/compliance');
+const healthRoutes     = require('./routes/health');
+
+// ── Middleware ────────────────────────────────────────────────────
+const { rateLimiter, aiRateLimiter } = require('./middleware/rateLimiter');
+const { errorHandler }    = require('./middleware/errorHandler');
+const { requestLogger }   = require('./middleware/requestLogger');
+const { securityHeaders } = require('./middleware/securityHeaders');
+
+const app    = express();
+const prisma = new PrismaClient({ log: ['error', 'warn'] });
+
+// ── Security headers (SOC 2 CC6.1, CC6.6) ─────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'js.stripe.com'],
+      styleSrc:    ["'self'", "'unsafe-inline'", 'fonts.googleapis.com'],
+      fontSrc:     ["'self'", 'fonts.gstatic.com'],
+      imgSrc:      ["'self'", 'data:', 'blob:', '*.stripe.com'],
+      connectSrc:  ["'self'", 'api.anthropic.com', '*.supabase.co', 'api.stripe.com'],
+      frameSrc:    ["'self'", 'js.stripe.com'],
+      objectSrc:   ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  xssFilter: true,
+}));
+
+app.use(securityHeaders);
+
+// ── Stripe webhook must receive raw body ──────────────────────────
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
+
+// ── General middleware ────────────────────────────────────────────
+app.use(compression());
+app.use(cors({
+  origin: (process.env.CORS_ORIGINS || '').split(',').filter(Boolean),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+}));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(cookieParser(process.env.SESSION_SECRET));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use(requestLogger);
+
+// ── Global rate limiter ───────────────────────────────────────────
+app.use('/api/', rateLimiter);
+
+// ── Make prisma available in requests ─────────────────────────────
+app.use((req, _res, next) => { req.prisma = prisma; next(); });
+
+// ── API Routes ────────────────────────────────────────────────────
+app.use('/api/health',        healthRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/ai',            aiRateLimiter, aiRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/users',         userRoutes);
+app.use('/api/webhooks',      webhookRoutes);
+app.use('/api/compliance',    complianceRoutes);
+
+// ── Serve React/static frontend ───────────────────────────────────
+const frontendPath = path.join(__dirname, '../frontend/public');
+app.use(express.static(frontendPath, {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  etag: true,
+}));
+
+// SPA fallback
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// ── Global error handler ──────────────────────────────────────────
+app.use(errorHandler);
+
+// ── Graceful shutdown ─────────────────────────────────────────────
+async function shutdown(signal) {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  await prisma.$disconnect();
+  process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
+
+// ── Start ─────────────────────────────────────────────────────────
+const PORT = parseInt(process.env.PORT || '3000', 10);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`NexGen Study API running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+module.exports = { app, prisma };

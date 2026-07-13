@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NexGen Study — AI Academic Companion | Corverxis Technologies</title>
+<meta name="description" content="Free AI academic companion for students and researchers. Study notes, essay writing, lecture summarization, research assistance and presentations. Powered by NexGen Ultra."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0F2645;--surface:#162E52;--panel:#1B3560;--lift:#1E3D6E;
+  --b:rgba(0,200,255,.1);--b2:rgba(0,200,255,.2);--b3:rgba(0,200,255,.38);
+  --text:#E8F2FB;--dim:#9BC0D8;--muted:#5A84A8;
+  --accent:#00C8FF;--a2:rgba(0,200,255,.12);
+  --green:#00C896;--amber:#FFB830;--red:#FF5C5C;--violet:#9B79FF;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Playfair Display',serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(0,200,255,.25);border-radius:3px}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--b);flex-shrink:0;z-index:50}
+.nav-logo{width:28px;height:28px;border-radius:7px;background:var(--a2);border:1px solid var(--b2);display:flex;align-items:center;justify-content:center}
+.nav-brand{font-family:var(--display);font-size:16px;font-weight:800;color:#fff;letter-spacing:-.3px;white-space:nowrap}
+.nav-brand span{color:var(--accent)}
+.tool-tabs{display:flex;gap:4px;overflow-x:auto;flex:1;padding:0 8px}
+.tool-tab{padding:7px 13px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--dim);font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0}
+.tool-tab:hover{color:var(--text);background:var(--a2)}
+.tool-tab.active{background:var(--a2);border-color:var(--b2);color:var(--accent);font-weight:700}
+.nav-btn{padding:6px 12px;border-radius:6px;border:1px solid var(--b2);background:transparent;color:var(--dim);font-family:var(--mono);font-size:9px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.nav-btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+.nav-btn.primary:hover{opacity:.88}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;overflow:hidden}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--b);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sb-section{padding:12px 14px}
+.sb-label{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--dim);margin-bottom:2px}
+.sb-item:hover{background:var(--a2);color:var(--text)}
+.sb-item.active{background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-weight:600}
+
+/* ── WORKSPACE ── */
+.workspace{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.ws-header{padding:16px 24px;border-bottom:1px solid var(--b);flex-shrink:0;background:var(--surface)}
+.ws-title{font-family:var(--display);font-size:20px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.ws-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.ws-body{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+
+/* ── PANELS ── */
+.panel{background:var(--surface);border:1px solid var(--b);border-radius:12px;padding:22px}
+.panel-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
+.panel-sub{font-size:11.5px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+.field-label{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;display:block}
+.field-input,.field-select{width:100%;background:var(--panel);border:1px solid var(--b2);border-radius:7px;padding:9px 12px;font-family:var(--sans);font-size:13px;color:var(--text);outline:none;transition:border-color .15s;margin-bottom:12px}
+.field-input:focus,.field-select:focus{border-color:var(--accent)}
+.field-textarea{width:100%;background:var(--panel);border:1px solid var(--b2);border-radius:7px;padding:9px 12px;font-family:var(--mono);font-size:11.5px;color:var(--text);outline:none;transition:border-color .15s;resize:vertical;min-height:100px;margin-bottom:12px}
+.field-textarea:focus{border-color:var(--accent)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{padding:10px 20px;border-radius:8px;border:none;font-family:var(--mono);font-size:10.5px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.btn-primary{background:var(--accent);color:var(--bg)}.btn-primary:hover{opacity:.88}.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:transparent;border:1px solid var(--b2);color:var(--dim)}.btn-ghost:hover{border-color:var(--b3);color:var(--text)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── OUTPUT ── */
+.output-wrap{background:var(--surface);border:1px solid var(--b2);border-radius:12px;overflow:hidden;margin-top:4px}
+.output-top{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--b2)}
+.output-label{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.output-actions{display:flex;gap:6px}
+.output-body{padding:20px;max-height:520px;overflow-y:auto;font-size:12.5px;line-height:1.8;color:var(--dim)}
+.output-body h1{font-size:18px;color:#fff;margin:16px 0 8px;font-weight:800}
+.output-body h2{font-size:14px;color:var(--accent);margin:14px 0 6px;font-weight:700}
+.output-body h3{font-size:12.5px;color:var(--text);margin:10px 0 5px;font-weight:700}
+.output-body p{margin-bottom:10px;color:var(--dim)}
+.output-body ul,.output-body ol{margin:6px 0 10px 20px;color:var(--dim)}
+.output-body li{margin-bottom:4px}
+.output-body strong{color:#fff}
+.output-body em{color:var(--amber)}
+.output-body table{width:100%;border-collapse:collapse;margin:12px 0}
+.output-body th{background:var(--panel);padding:8px 12px;text-align:left;color:var(--accent);font-family:var(--mono);font-size:9px;border-bottom:1px solid var(--b2)}
+.output-body td{padding:8px 12px;border-bottom:1px solid var(--b);color:var(--text);font-size:12px}
+.output-body blockquote{border-left:3px solid var(--accent);padding:8px 14px;background:var(--a2);border-radius:0 6px 6px 0;margin:10px 0;color:var(--dim);font-style:italic}
+.output-body code{background:var(--panel);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--accent)}
+
+/* ── XAI ── */
+.xai-block{margin-top:14px;padding:12px 16px;background:rgba(155,121,255,.07);border:1px solid rgba(155,121,255,.2);border-radius:10px}
+.xai-header{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--violet);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:2px dashed var(--b2);border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:var(--a2)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,200,255,.08)}
+.upload-zone input[type=file]{display:none}
+.upload-hint{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px}
+
+/* ── FLASHCARD ── */
+.flashcard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
+.flashcard{background:var(--panel);border:1px solid var(--b2);border-radius:10px;padding:16px;cursor:pointer;transition:all .2s;min-height:120px;display:flex;flex-direction:column;justify-content:space-between}
+.flashcard:hover{border-color:var(--accent);transform:translateY(-2px)}
+.flashcard .fc-q{font-size:12.5px;font-weight:600;color:#fff;line-height:1.5;margin-bottom:8px}
+.flashcard .fc-a{font-size:11.5px;color:var(--dim);display:none;line-height:1.6}
+.flashcard.revealed .fc-a{display:block}
+.flashcard .fc-flip{font-family:var(--mono);font-size:9px;color:var(--accent);cursor:pointer;align-self:flex-end}
+
+/* ── AUTH WALL ── */
+#authWall{display:none;position:fixed;inset:0;background:rgba(15,38,69,.97);z-index:99999;align-items:flex-start;justify-content:center;backdrop-filter:blur(20px);padding:24px 20px;overflow-y:auto}
+.auth-inner{max-width:880px;width:100%;margin:auto}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:6px;background:transparent;color:var(--muted);font-family:var(--mono);font-size:9.5px;cursor:pointer;transition:all .15s}
+.auth-tab.active{background:var(--accent);color:var(--bg);font-weight:700}
+.auth-input{width:100%;background:var(--panel);border:1px solid var(--b2);border-radius:7px;padding:10px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;margin-bottom:10px;box-sizing:border-box;transition:border-color .15s}
+.auth-input:focus{border-color:var(--b3)}
+.auth-label{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+
+/* ── UPGRADE ── */
+.upgrade-wall{display:none;position:fixed;inset:0;background:rgba(15,38,69,.95);z-index:99998;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(14px)}
+.upgrade-wall.on{display:flex}
+
+/* ── MFA ── */
+#nxMFAWall,#nxMFASettings{display:none;position:fixed;inset:0;background:rgba(15,38,69,.95);z-index:1000000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(14px)}
+
+/* ── EMPTY STATE ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.5}
+.empty-title{font-family:var(--display);font-size:24px;font-weight:800;color:#fff;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--muted);max-width:420px;line-height:1.7;margin-bottom:28px}
+.quick-starters{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
+.qs{padding:8px 16px;background:var(--a2);border:1px solid var(--b2);border-radius:20px;font-size:12px;color:var(--accent);cursor:pointer;transition:all .15s}
+.qs:hover{border-color:var(--accent);background:rgba(0,200,255,.18)}
+
+/* ── TOAST ── */
+.notebook-notice{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;background:rgba(155,121,255,.08);border:1px solid rgba(155,121,255,.25);border-radius:9px;margin-bottom:14px;font-size:12px;color:#C4B0E0;line-height:1.6}
+.notebook-notice strong{color:#fff}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--b3);border-radius:8px;padding:10px 16px;font-family:var(--mono);font-size:12px;color:var(--accent);z-index:999999;opacity:0;transition:opacity .25s;pointer-events:none}
+
+/* ── WATERMARK ── */
+.upload-btn-wrap{display:inline-flex;align-items:center;gap:8px;margin-bottom:8px}
+.upload-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--a2);border:1px solid var(--b2);border-radius:7px;font-family:var(--mono);font-size:9.5px;color:var(--accent);cursor:pointer;transition:all .15s;font-weight:600}
+.upload-btn:hover{border-color:var(--b3);background:rgba(0,200,255,.18)}
+.upload-file-name{font-family:var(--mono);font-size:9px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.watermark{margin-top:16px;padding:10px 14px;background:var(--a2);border:1px solid var(--b);border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted)}
+.watermark strong{color:var(--accent)}
+
+@media(max-width:860px){.sidebar{display:none}.tool-tabs{padding:0}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- TOPBAR                                                      -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="nav-logo">
+    <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
+      <polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/>
+      <circle cx="14" cy="14" r="2.5" fill="#00C8FF"/>
+    </svg>
+  </div>
+  <div class="nav-brand">NexGen <span>Study</span></div>
+
+  <div class="tool-tabs" id="toolTabs">
+    <button class="tool-tab active" id="tabNotes"    onclick="setTool('notes')">   &#x1F4DD; Study Notes</button>
+    <button class="tool-tab"        id="tabEssay"    onclick="setTool('essay')">   &#x270F;&#xFE0F; Essay Writer</button>
+    <button class="tool-tab"        id="tabLecture"  onclick="setTool('lecture')"> &#x1F3A4; Lecture Summary</button>
+    <button class="tool-tab"        id="tabResearch" onclick="setTool('research')">&#x1F50D; Research Assistant</button>
+    <button class="tool-tab"        id="tabSlides"   onclick="setTool('slides')">  &#x1F4CA; Presentations</button>
+    <button class="tool-tab"        id="tabFlash"    onclick="setTool('flash')">   &#x26A1; Flashcards</button>
+    <button class="tool-tab"        id="tabCite"     onclick="setTool('cite')">    &#x1F4DA; Citations</button>
+    <button class="tool-tab"        id="tabNotebook" onclick="setTool('notebook')">&#x1F9EA; NexGen Notebook</button>
+    <button class="tool-tab"        id="tabStem"     onclick="setTool('stem')">&#x1F52C; STEM Education</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    <span id="trialNav" style="font-family:var(--mono);font-size:8.5px;padding:3px 9px;border-radius:10px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);display:none"></span>
+    <button class="nav-btn" onclick="document.getElementById('upgradeWall').classList.add('on')">&#x1F4B3; Upgrade</button>
+    <button id="mfaNavBtn" onclick="document.getElementById('nxMFASettings').style.display='flex';nxMFALoadStatus();" style="display:none;padding:5px 10px;background:transparent;border:1px solid var(--b2);color:var(--accent);border-radius:6px;font-family:var(--mono);font-size:9px;cursor:pointer">&#x1F512;</button>
+    <button id="signInBtn" onclick="showAuth('up')" class="nav-btn primary">Free Sign Up</button>
+    <button id="userPill"  onclick="signOut()" style="display:none;padding:5px 12px;background:transparent;border:1px solid var(--b2);color:var(--accent);border-radius:6px;font-family:var(--mono);font-size:9px;cursor:pointer" title="Sign out"></button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MAIN LAYOUT                                                 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sb-section">
+      <div class="sb-label">Study Notes</div>
+      <div class="sb-item active" id="sb-notes-from-text" onclick="setSubTool('notes','from-text')">&#x1F4C4; Notes from Text</div>
+      <div class="sb-item"        id="sb-notes-from-upload" onclick="setSubTool('notes','from-upload')">&#x1F4CE; Notes from Upload</div>
+      <div class="sb-item"        id="sb-notes-mindmap" onclick="setSubTool('notes','mindmap')">&#x1F9E0; Concept Map</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Essay Writer</div>
+      <div class="sb-item" id="sb-essay-academic" onclick="setSubTool('essay','academic')">&#x1F4D6; Academic Essay</div>
+      <div class="sb-item" id="sb-essay-critique" onclick="setSubTool('essay','critique')">&#x270F;&#xFE0F; Critical Analysis</div>
+      <div class="sb-item" id="sb-essay-compare" onclick="setSubTool('essay','compare')">&#x2194;&#xFE0F; Compare &amp; Contrast</div>
+      <div class="sb-item" id="sb-essay-personal" onclick="setSubTool('essay','personal')">&#x1F9D1; Personal Statement</div>
+      <div class="sb-item" id="sb-essay-proposal" onclick="setSubTool('essay','proposal')">&#x1F4CB; Research Proposal</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Research</div>
+      <div class="sb-item" id="sb-research-lit" onclick="setSubTool('research','lit')">&#x1F4DA; Literature Review</div>
+      <div class="sb-item" id="sb-research-argue" onclick="setSubTool('research','argue')">&#x2696;&#xFE0F; Argument Mapping</div>
+      <div class="sb-item" id="sb-research-counter" onclick="setSubTool('research','counter')">&#x1F914; Counterarguments</div>
+      <div class="sb-item" id="sb-research-thesis" onclick="setSubTool('research','thesis')">&#x1F3AF; Thesis Statement</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">NexGen Notebook</div>
+      <div class="sb-item" id="sb-notebook-research" onclick="setSubTool('notebook','research')">&#x1F4AC; Research Critique</div>
+      <div class="sb-item" id="sb-notebook-bizplan" onclick="setSubTool('notebook','bizplan')">&#x1F4BC; Business Plan Analysis</div>
+      <div class="sb-item" id="sb-notebook-docreview" onclick="setSubTool('notebook','docreview')">&#x1F4CB; Document Review</div>
+      <div class="sb-item" id="sb-notebook-recommend" onclick="setSubTool('notebook','recommend')">&#x2B50; Recommendations</div>
+      <div class="sb-item" id="sb-notebook-debate" onclick="setSubTool('notebook','debate')">&#x2696;&#xFE0F; Academic Debate</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">STEM Education</div>
+      <div class="sb-item" id="sb-stem-explain"   onclick="setSubTool('stem','explain')">&#x1F4A1; Concept Explainer</div>
+      <div class="sb-item" id="sb-stem-problems"  onclick="setSubTool('stem','problems')">&#x2795; Problem Solver</div>
+      <div class="sb-item" id="sb-stem-proofguide" onclick="setSubTool('stem','proofguide')">&#x221A; Proof Guide</div>
+      <div class="sb-item" id="sb-stem-labdesign" onclick="setSubTool('stem','labdesign')">&#x1F9EC; Lab Design</div>
+      <div class="sb-item" id="sb-stem-codelearn" onclick="setSubTool('stem','codelearn')">&#x1F4BB; Code &amp; Algorithms</div>
+      <div class="sb-item" id="sb-stem-formulasheet" onclick="setSubTool('stem','formulasheet')">&#x1F4D0; Formula Sheet</div>
+    </div>
+
+    <div style="margin-top:auto;padding:14px;border-top:1px solid var(--b)">
+      <div style="background:linear-gradient(135deg,var(--a2) 0%,rgba(155,121,255,.1) 100%);border:1px solid var(--b2);border-radius:8px;padding:12px">
+        <div style="font-family:var(--mono);font-size:8px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">&#x1F393; NexGen Study</div>
+        <div style="font-size:11.5px;color:var(--dim);line-height:1.6;margin-bottom:10px">Scholar $29/mo &nbsp;&middot;&nbsp; Researcher $59/mo. 7-day free trial.</div>
+        <button onclick="document.getElementById('upgradeWall').classList.add('on')" style="width:100%;padding:7px;background:var(--accent);color:var(--bg);border:none;border-radius:6px;font-family:var(--mono);font-size:9px;font-weight:700;cursor:pointer">Upgrade for Unlimited</button>
+      </div>
+      <div style="margin-top:12px;padding:8px 10px;background:var(--a2);border-radius:7px;display:flex;align-items:center;gap:7px">
+        <svg width="14" height="14" viewBox="0 0 28 28" fill="none"><polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/><circle cx="14" cy="14" r="2.5" fill="#00C8FF"/></svg>
+        <div><div style="font-size:10px;font-weight:700;color:#fff">NexGen Ultra</div><div style="font-family:var(--mono);font-size:7px;color:var(--muted)">Corverxis Technologies</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+    <div class="ws-header">
+      <div class="ws-title" id="wsTitle">Study Notes Generator</div>
+      <div class="ws-sub" id="wsSub">Transform any text, reading or topic into structured study notes</div>
+    </div>
+    <div class="ws-body" id="wsBody">
+      <!-- dynamic content -->
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- AUTH WALL                                                   -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="authWall">
+<div class="auth-inner">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+    <svg width="36" height="36" viewBox="0 0 28 28" fill="none">
+      <polygon points="14,2 24,7.5 24,20.5 14,26 4,20.5 4,7.5" stroke="#00C8FF" stroke-width="1.5" fill="none"/>
+      <polygon points="14,7 20,10.5 20,17.5 14,21 8,17.5 8,10.5" stroke="#00C8FF" stroke-width="1" fill="none" opacity=".6"/>
+      <circle cx="14" cy="14" r="2.5" fill="#00C8FF"/>
+    </svg>
+    <div>
+      <div style="font-family:var(--display);font-size:22px;font-weight:800;color:#fff">NexGen <span style="color:var(--accent)">Study</span></div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px">Corverxis Technologies</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- Left: highlights -->
+    <div id="authHighlights" style="flex:1;min-width:280px">
+      <div style="font-size:20px;font-weight:800;color:#fff;font-family:var(--display);margin-bottom:10px;letter-spacing:-.5px">Your AI study partner.<br><span style="color:var(--accent)">Built for every student.</span></div>
+      <div style="font-size:13px;color:var(--dim);line-height:1.8;margin-bottom:22px">NexGen Study is the academic AI companion for university and college students. Try free for 7 days &mdash; then Scholar $29/mo or Researcher $59/mo. Powered by NexGen Ultra.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:var(--a2);border:1px solid var(--b2);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x1F4DD;</div>
+          <div><div style="font-size:12px;font-weight:700;color:#fff">Study Notes in seconds</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Paste any text &mdash; get structured notes, key points, definitions</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:var(--a2);border:1px solid var(--b2);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x270F;&#xFE0F;</div>
+          <div><div style="font-size:12px;font-weight:700;color:#fff">Essays, structured &amp; cited</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Academic, critical analysis, compare &amp; contrast, personal statements</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:var(--a2);border:1px solid var(--b2);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x26A1;</div>
+          <div><div style="font-size:12px;font-weight:700;color:#fff">Flashcards &amp; Presentations</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-generated flashcard sets and real .pptx slide decks</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:var(--a2);border:1px solid var(--b2);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x1F50D;</div>
+          <div><div style="font-size:12px;font-weight:700;color:#fff">Literature review &amp; research</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Argument mapping, counterarguments, thesis statements &amp; proposals</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:var(--a2);border:1px solid var(--b2);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x1F9EA;</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px">
+              NexGen Notebook
+              <span style="font-family:var(--mono);font-size:8px;font-weight:700;padding:2px 8px;background:var(--a2);border:1px solid var(--b2);border-radius:10px;color:var(--accent);letter-spacing:.5px">RESEARCHER</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Upload any document &mdash; get grounded critique, business plan analysis, research evaluation &amp; recommendations based solely on your content</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.25);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x1F52C;</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff">STEM Education</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Concept explainers, problem solving step-by-step, mathematical proofs, lab design, code &amp; algorithms, formula sheets</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:var(--a2);border:1px solid var(--b2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--accent)">$29</div><div style="font-family:var(--mono);font-size:7px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px">From</div></div>
+        <div style="background:var(--a2);border:1px solid var(--b2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--accent)">7</div><div style="font-family:var(--mono);font-size:7px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px">Tools</div></div>
+        <div style="background:var(--a2);border:1px solid var(--b2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--accent)">.pptx</div><div style="font-family:var(--mono);font-size:7px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px">Real files</div></div>
+      </div>
+    </div>
+
+    <!-- Right: form -->
+    <div style="background:var(--panel);border:1px solid var(--b3);border-radius:14px;padding:26px;width:100%;max-width:370px;flex-shrink:0">
+      <div style="display:flex;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:16px;border:1px solid var(--b)">
+        <button id="tabIn" class="auth-tab" onclick="authTab('in')">SIGN IN</button>
+        <button id="tabUp" class="auth-tab active" onclick="authTab('up')">FREE SIGN UP</button>
+      </div>
+
+      <div id="errIn" style="display:none;font-family:var(--mono);font-size:10px;color:var(--red);background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.2);border-radius:6px;padding:8px 12px;margin-bottom:10px"></div>
+      <div id="errUp" style="display:none;font-family:var(--mono);font-size:10px;color:var(--red);background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.2);border-radius:6px;padding:8px 12px;margin-bottom:10px"></div>
+
+      <div id="formIn" style="display:none">
+        <div class="auth-label">Email</div>
+        <input id="emailIn" type="email" class="auth-input" placeholder="you@university.edu"/>
+        <div class="auth-label">Password</div>
+        <input id="passIn" type="password" class="auth-input" placeholder="Your password"/>
+        <button id="btnIn" onclick="doSignIn()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#x2192;</button>
+        <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">
+          <span onclick="forgotPw()" style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px">Forgot password?</span>
+          &nbsp;&middot;&nbsp;
+          <span onclick="authTab('up')" style="color:var(--accent);cursor:pointer">Create account</span>
+        </div>
+      </div>
+
+      <div id="formUp">
+        <div class="auth-label">Full Name</div>
+        <input id="nameUp" type="text" class="auth-input" placeholder="Alex Morgan"/>
+        <div class="auth-label">University / College Email</div>
+        <input id="emailUp" type="email" class="auth-input" placeholder="you@university.edu"/>
+        <div class="auth-label">Password</div>
+        <input id="passUp" type="password" class="auth-input" placeholder="Min. 6 characters"/>
+        <div id="consentRow" style="display:flex;align-items:flex-start;gap:9px;margin:10px 0 14px;padding:10px 12px;background:var(--a2);border:1px solid var(--b2);border-radius:7px">
+          <input type="checkbox" id="consentChk" style="margin-top:2px;accent-color:var(--accent);width:13px;height:13px;flex-shrink:0;cursor:pointer"/>
+          <label for="consentChk" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.6;cursor:pointer">I agree to the <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Privacy Policy</span> and <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Terms of Service</span></label>
+        </div>
+        <button id="btnUp" onclick="doSignUp()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
+        <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">Scholar $29/mo &nbsp;&middot;&nbsp; Researcher $59/mo</div>
+        <div style="margin-top:8px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">Already have an account? <span onclick="authTab('in')" style="color:var(--accent);cursor:pointer">Sign in</span></div>
+        <div style="margin-top:6px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">7-day trial &nbsp;&middot;&nbsp; No credit card required</div>
+      </div>
+
+      <div id="formReset" style="display:none">
+        <input id="newPass" type="password" class="auth-input" placeholder="New password (min. 6 chars)"/>
+        <button onclick="updatePw()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Set New Password &#x2192;</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- UPGRADE WALL                                                -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="upgrade-wall" id="upgradeWall">
+  <div style="max-width:860px;width:100%;max-height:90vh;overflow-y:auto;position:relative">
+    <button onclick="document.getElementById('upgradeWall').classList.remove('on')" style="position:absolute;top:0;right:0;width:32px;height:32px;border-radius:8px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-size:15px;cursor:pointer">&#x2715;</button>
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px">Pricing</div>
+      <h2 style="font-family:var(--display);font-size:28px;font-weight:800;color:#fff;margin-bottom:6px">Upgrade NexGen Study</h2>
+      <p style="font-size:13px;color:var(--muted)">Cancel anytime &nbsp;&middot;&nbsp; Student pricing</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+
+      <div style="background:var(--surface);border:1px solid var(--b2);border-radius:12px;padding:22px;display:flex;flex-direction:column">
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">7-Day Trial</div>
+        <div style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:2px">$0<span style="font-size:11px;font-weight:400;color:var(--muted)">/mo</span></div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:14px">7-day trial</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:18px;flex:1">
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>3 AI outputs/day for 7 days</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>All 7 tools</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>PDF export</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>No credit card required</li>
+        </ul>
+        <button onclick="document.getElementById('upgradeWall').classList.remove('on');showAuth('up')" class="btn btn-ghost" style="width:100%;justify-content:center">Start Free Trial</button>
+      </div>
+
+      <div style="background:var(--panel);border:2px solid var(--accent);border-radius:12px;padding:22px;display:flex;flex-direction:column;position:relative">
+        <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:8px;font-weight:700;padding:3px 12px;border-radius:20px;white-space:nowrap">&#x2605; STUDENT FAVOURITE</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">Scholar</div>
+        <div style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:2px">$29<span style="font-size:11px;font-weight:400;color:var(--muted)">/mo</span></div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:14px">cancel anytime</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:18px;flex:1">
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Unlimited AI outputs</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Real .pptx presentations</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Word document export</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Literature reviews</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Priority generation</li>
+        </ul>
+        <button onclick="upgradeTo('scholar')" class="btn btn-primary" style="width:100%;justify-content:center">Subscribe &#x2192;</button>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--b2);border-radius:12px;padding:22px;display:flex;flex-direction:column">
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">Researcher</div>
+        <div style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:2px">$59<span style="font-size:11px;font-weight:400;color:var(--muted)">/mo</span></div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:14px">for postgrads &amp; PhD</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:18px;flex:1">
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Everything in Scholar</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Full thesis support</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Extended context window</li>
+          <li style="font-size:11.5px;color:var(--dim);display:flex;gap:6px"><span style="color:var(--green)">&#x2713;</span>Research proposal drafts</li>
+        </ul>
+        <button onclick="upgradeTo('researcher')" class="btn btn-ghost" style="width:100%;justify-content:center">Subscribe</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MFA MODALS (same pattern)                                   -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="nxMFAWall">
+  <div style="background:var(--panel);border:1px solid var(--b3);border-radius:14px;padding:36px;max-width:360px;width:100%;text-align:center">
+    <div style="font-size:28px;margin-bottom:14px">&#x1F512;</div>
+    <div style="font-family:var(--display);font-size:18px;font-weight:800;color:#fff;margin-bottom:8px">Two-Factor Verification</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.7">Enter the 6-digit code from your authenticator app</div>
+    <input id="nxMFACode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:8px;padding:13px;font-family:var(--mono);font-size:22px;letter-spacing:8px;text-align:center;color:var(--text);outline:none;margin-bottom:12px;box-sizing:border-box"/>
+    <div id="nxMFAErr" style="display:none;font-family:var(--mono);font-size:10px;color:var(--red);margin-bottom:10px"></div>
+    <button id="nxMFAVerifyBtn" onclick="nxMFAVerify()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px">Verify &#x2192;</button>
+    <div onclick="nxMFACancel()" style="font-family:var(--mono);font-size:9px;color:var(--muted);cursor:pointer">Cancel</div>
+  </div>
+</div>
+
+<div id="nxMFASettings">
+  <div style="background:var(--panel);border:1px solid var(--b3);border-radius:14px;padding:30px;max-width:400px;width:100%;position:relative">
+    <button onclick="document.getElementById('nxMFASettings').style.display='none'" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:6px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-size:13px;cursor:pointer">&#x2715;</button>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Security</div>
+    <div style="font-family:var(--display);font-size:18px;font-weight:800;color:#fff;margin-bottom:18px">Two-Factor Auth</div>
+    <div id="nxMFAStatusView">
+      <div id="nxMFAStatusLoading" style="font-family:var(--mono);font-size:11px;color:var(--muted)">Loading&hellip;</div>
+      <div id="nxMFAOffView" style="display:none">
+        <p style="font-size:12px;color:var(--dim);margin-bottom:16px;line-height:1.7">Add a second layer of security with Google Authenticator or Authy.</p>
+        <button onclick="nxMFAStartEnroll()" class="btn btn-primary" style="width:100%;justify-content:center">Enable MFA &#x2192;</button>
+      </div>
+      <div id="nxMFAOnView" style="display:none">
+        <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(0,200,150,.12);border:1px solid rgba(0,200,150,.3);border-radius:20px;font-family:var(--mono);font-size:9.5px;color:var(--green);font-weight:700;margin-bottom:14px">&#x2713; Enabled</div>
+        <p style="font-size:12px;color:var(--dim);margin-bottom:14px">Your account is protected with two-factor authentication.</p>
+        <button onclick="nxMFADisable()" class="btn btn-ghost" style="width:100%;justify-content:center;color:var(--red);border-color:rgba(255,92,92,.3)">Disable MFA</button>
+      </div>
+    </div>
+    <div id="nxMFAEnrollView" style="display:none">
+      <p style="font-size:12px;color:var(--dim);margin-bottom:12px">Scan with Google Authenticator or Authy:</p>
+      <div id="nxMFAQRBox" style="background:#fff;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;min-height:140px"></div>
+      <div id="nxMFASecret" style="font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--bg);padding:7px 10px;border-radius:6px;margin-bottom:14px;word-break:break-all"></div>
+      <input id="nxMFAEnrollCode" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:7px;padding:11px;font-family:var(--mono);font-size:16px;letter-spacing:4px;text-align:center;color:var(--text);outline:none;margin-bottom:10px;box-sizing:border-box"/>
+      <div id="nxMFAEnrollErr" style="display:none;font-family:var(--mono);font-size:10px;color:var(--red);margin-bottom:8px"></div>
+      <button onclick="nxMFAConfirmEnroll()" class="btn btn-primary" style="width:100%;justify-content:center">Confirm &#x2192;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PRIVACY MODAL                                               -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(15,38,69,.95);z-index:999999;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;backdrop-filter:blur(14px)">
+  <div style="background:var(--panel);border:1px solid var(--b3);border-radius:14px;max-width:640px;width:100%;margin:auto;position:relative">
+    <button onclick="closePrivacyModal()" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:6px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-size:13px;cursor:pointer">&#x2715;</button>
+    <div style="padding:32px 36px 36px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px">Legal</div>
+      <h2 style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">Privacy Policy &amp; Terms of Service</h2>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:24px">NexGen Study &nbsp;&middot;&nbsp; Corverxis Technologies Ltd</div>
+
+      <div style="font-size:12px;color:var(--dim);line-height:1.85">
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--b2)">&#x1F512; Privacy Policy</div>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">1. Who We Are</div>
+        <p style="margin:0 0 8px">NexGen Study is operated by <strong style="color:#fff">Corverxis Technologies Ltd</strong>. Contact <strong style="color:#fff">support@corverxis.com</strong>.</p>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">2. What We Collect</div>
+        <p style="margin:0 0 5px"><strong style="color:#fff">Account data:</strong> Name, email, encrypted password.</p>
+        <p style="margin:0 0 5px"><strong style="color:#fff">Content you submit:</strong> Text, topics and documents processed to generate your study outputs. Not used beyond your session unless saved.</p>
+        <p style="margin:0 0 8px"><strong style="color:#fff">Usage analytics:</strong> Anonymous usage patterns to improve the platform.</p>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">3. AI Processing</div>
+        <p style="margin:0 0 8px">NexGen Study is powered by <strong style="color:#fff">NexGen Ultra</strong>, Corverxis Technologies' proprietary AI engine. Your content is not sold or used to train models without consent.</p>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">4. Your Rights (GDPR / CCPA)</div>
+        <p style="margin:0 0 8px">Access, correct or delete your data at any time: <strong style="color:#fff">support@corverxis.com</strong></p>
+
+        <div style="font-size:13px;font-weight:700;color:#fff;margin:14px 0 10px;padding:12px 0 7px;border-top:1px solid var(--b2);border-bottom:1px solid var(--b2)">&#x1F4CB; Terms of Service</div>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">1. Academic Integrity</div>
+        <p style="margin:0 0 8px"><strong style="color:#fff">You are responsible for ensuring your use of AI-generated content complies with your institution's academic integrity policies.</strong> NexGen Study is a learning aid and drafting scaffold. Submitting AI-generated content as entirely your own work, without acknowledgement, may violate your institution's academic honesty policies. Always check your institution's rules before submitting AI-assisted work.</p>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">2. Permitted Use</div>
+        <p style="margin:0 0 8px">Use for personal study assistance only. Do not resell or share access. Do not use to complete assessed work in ways that violate your institution's policies.</p>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">3. Billing &amp; Cancellation</div>
+        <p style="margin:0 0 8px">Paid plans billed monthly via Stripe. Cancel anytime.</p>
+
+        <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin:10px 0 5px">4. Governing Law</div>
+        <p style="margin:0 0 14px">Governed by the laws of the <strong style="color:#fff">State of Delaware, United States</strong>.</p>
+
+        <div style="background:var(--a2);border:1px solid var(--b2);border-radius:7px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:700;color:#fff;margin-bottom:4px">Contact</div>
+          <div style="font-size:11px;color:var(--dim)">Corverxis Technologies Ltd &nbsp;&middot;&nbsp; <strong style="color:#fff">support@corverxis.com</strong></div>
+        </div>
+      </div>
+
+      <button onclick="closePrivacyModal()" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:20px">I Understand &mdash; Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- JAVASCRIPT                                                  -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+// ── CONFIG ──────────────────────────────────────────────────────
+var KEY  = ['sk-ant-api03-edyuggSRRGMAMi','Km2R_6BZ6HSGC4Qn_krY2IJW4ea',
+            'kK-UNfq9JvlyAZJHQlinc1U9k_t','PJP3JuTJdNsY-Sip0Q-rLoVvgAA'].join('');
+var SURL = 'https://bvwgqafekmfqpylsrteu.supabase.co';
+var SKEY = 'sb_publishable_giKFkcglGwHs2ezDp0UsKQ_tmZ3QJis';
+var _sb  = window._supaInst || (window._supaInst = supabase.createClient(SURL, SKEY));
+var _user = null;
+var _tool = 'notes';
+var _sub  = 'from-text';
+var _busy = false;
+var _lastOutput = '';
+
+// ── TOOL / SUBTOOL DEFINITIONS ──────────────────────────────────
+var TOOLS = {
+  notes: { title:'Study Notes Generator', sub:'Transform any text, reading or topic into structured study notes',
+    subs:{
+      'from-text': { label:'Notes from Text', icon:'&#x1F4C4;',
+        fields:[
+          {id:'topic', label:'Topic / Subject', type:'text', placeholder:'e.g. The French Revolution'},
+          {id:'level', label:'Study Level', type:'select', options:['GCSE / High School','Undergraduate (Year 1-2)','Undergraduate (Year 3-4)','Masters / Postgraduate','PhD / Research']},
+          {id:'content', label:'Text to Summarize', type:'textarea', placeholder:'Paste the textbook excerpt, article, lecture reading or any text you want converted into study notes...', rows:6},
+        ],
+        system:'You are a world-class study tutor. Convert the provided text into beautifully structured, student-friendly study notes. Structure: # Main Title, ## Key Topics (2-5), bullet points for each (3-6 per section), **Key Terms** bolded with brief definitions, a "Quick Summary" section at the end (3-4 sentences). Calibrate depth to the study level provided. Be concise and memorable. End with ##XAI## \n**How I structured this**\n[how you identified the key topics and structured them]\n\n**Confidence & gaps**\n[what was covered well vs what the student should read further on]\n##XAI##',
+        promptFn:function(d){ return 'Study level: '+d.level+'. Topic: '+d.topic+'. Text: """'+d.content+'"""'; }
+      },
+      'from-upload': { label:'Notes from Upload', icon:'&#x1F4CE;',
+        fields:[
+          {id:'topic', label:'Topic / Subject', type:'text', placeholder:'e.g. Keynesian Economics'},
+          {id:'level', label:'Study Level', type:'select', options:['GCSE / High School','Undergraduate (Year 1-2)','Undergraduate (Year 3-4)','Masters / Postgraduate','PhD / Research']},
+          {id:'content', label:'Paste Document / PDF Text', type:'textarea', placeholder:'Copy and paste the content from your PDF, document or reading here...', rows:7},
+          {id:'focus', label:'Focus Areas (optional)', type:'text', placeholder:'e.g. Focus on causes and consequences'},
+        ],
+        system:'You are a world-class study tutor. Create comprehensive, structured study notes from the pasted document. Identify all key concepts, theories, definitions and examples. Use headers, bullet points, tables where appropriate, and highlight key terms in bold. End with a glossary of important terms and a "What to remember" summary box. End with ##XAI## ##XAI## markers containing method and confidence notes.',
+        promptFn:function(d){ return 'Study level: '+d.level+'. Topic: '+d.topic+(d.focus?'. Focus on: '+d.focus:'')+'. Document content: """'+d.content+'"""'; }
+      },
+      'mindmap': { label:'Concept Map', icon:'&#x1F9E0;',
+        fields:[
+          {id:'topic', label:'Central Topic', type:'text', placeholder:'e.g. Climate Change'},
+          {id:'context', label:'Context / Subtopics to cover', type:'textarea', placeholder:'What aspects do you want the concept map to cover? Or paste source text...', rows:5},
+        ],
+        system:'You are an expert at creating structured concept maps for academic study. Generate a detailed textual concept map using markdown. Start with the central concept, then branch into 4-6 main categories, each with 3-5 sub-points. Use indented bullet points to show hierarchy. Add relationship labels where topics connect. Include a "Key Connections" section showing how the main themes relate to each other. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Central topic: '+d.topic+'. Context: '+d.context; }
+      }
+    }
+  },
+
+  essay: { title:'Essay Writer', sub:'Draft structured, well-argued academic essays',
+    subs:{
+      'academic': { label:'Academic Essay', icon:'&#x1F4D6;',
+        fields:[
+          {id:'topic', label:'Essay Title / Question', type:'text', placeholder:'e.g. To what extent did industrialisation cause urbanisation in 19th-century Britain?'},
+          {id:'level', label:'Academic Level', type:'select', options:['GCSE / A-Level','Undergraduate Year 1','Undergraduate Year 2-3','Masters Level','PhD Level']},
+          {id:'words', label:'Word Count', type:'select', options:['500 words','750 words','1,000 words','1,500 words','2,000 words','3,000 words']},
+          {id:'style', label:'Referencing Style', type:'select', options:['Harvard','APA (7th Edition)','MLA','Chicago','Oxford','Vancouver']},
+          {id:'notes', label:'Key Arguments / Evidence (optional)', type:'textarea', placeholder:'Any specific points, examples or evidence you want included...', rows:4},
+        ],
+        system:'You are an expert academic essay writer. Write a well-structured, argument-driven academic essay. Include: a strong introductory paragraph with a clear thesis statement, body paragraphs each with a clear topic sentence, supporting evidence, and analysis, counter-arguments addressed and refuted, and a conclusion that synthesises the argument without simply restating. Use formal academic tone. Include in-text citations in the specified referencing style (use plausible academic source placeholders like "Smith, 2018" since real sources cannot be verified). Include a References section at the end. End with ##XAI## markers noting methodology and what real sources the student should find to strengthen the essay.',
+        promptFn:function(d){ return 'Essay question: "'+d.topic+'". Academic level: '+d.level+'. Target length: '+d.words+'. Referencing style: '+d.style+'.'+(d.notes?' Key points to include: '+d.notes:''); }
+      },
+      'critique': { label:'Critical Analysis', icon:'&#x270F;&#xFE0F;',
+        fields:[
+          {id:'topic', label:'Work / Topic to Critically Analyse', type:'text', placeholder:'e.g. Freud\'s theory of the unconscious mind'},
+          {id:'level', label:'Academic Level', type:'select', options:['Undergraduate Year 1','Undergraduate Year 2-3','Masters Level','PhD Level']},
+          {id:'words', label:'Word Count', type:'select', options:['500 words','750 words','1,000 words','1,500 words','2,000 words']},
+          {id:'context', label:'Additional Context / Source Material', type:'textarea', placeholder:'Any key arguments or source material to incorporate...', rows:4},
+        ],
+        system:'You are an expert academic critic. Write a rigorous critical analysis that evaluates strengths, weaknesses, assumptions, implications and significance. Structure: Introduction (context & thesis), Summary of key claims, Critical Evaluation (strengths with evidence, weaknesses/limitations, alternative perspectives, underlying assumptions), Implications and Significance, Conclusion. Maintain academic objectivity. Use hedged language ("arguably", "one could contend"). End with ##XAI## markers.',
+        promptFn:function(d){ return 'Critical analysis of: "'+d.topic+'". Level: '+d.level+'. Length: '+d.words+'.'+(d.context?' Context: '+d.context:''); }
+      },
+      'compare': { label:'Compare & Contrast', icon:'&#x2194;&#xFE0F;',
+        fields:[
+          {id:'item1', label:'First Subject', type:'text', placeholder:'e.g. Keynesian Economics'},
+          {id:'item2', label:'Second Subject', type:'text', placeholder:'e.g. Monetarism'},
+          {id:'context', label:'Comparison Context / Focus', type:'text', placeholder:'e.g. Their approaches to managing recessions'},
+          {id:'words', label:'Word Count', type:'select', options:['500 words','750 words','1,000 words','1,500 words']},
+          {id:'level', label:'Academic Level', type:'select', options:['Undergraduate Year 1','Undergraduate Year 2-3','Masters Level']},
+        ],
+        system:'You are an academic writer specialising in comparative analysis. Write a compare-and-contrast essay using the point-by-point method (not block method). For each key dimension of comparison, analyse both subjects simultaneously. Include: introduction with context and thesis, 3-5 comparison dimensions each as a paragraph, clear similarities and differences identified, evaluative conclusion arguing which is more effective/significant and why. Academic tone. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Compare and contrast: "'+d.item1+'" vs "'+d.item2+'". Focus: '+d.context+'. Level: '+d.level+'. Length: '+d.words+'.'; }
+      },
+      'personal': { label:'Personal Statement', icon:'&#x1F9D1;',
+        fields:[
+          {id:'subject', label:'Subject / Programme Applying For', type:'text', placeholder:'e.g. BSc Computer Science'},
+          {id:'university', label:'Type of University', type:'text', placeholder:'e.g. Russell Group UK / Ivy League US'},
+          {id:'background', label:'Your Background, Interests & Experiences', type:'textarea', placeholder:'Tell me about yourself: relevant subjects, projects, extracurriculars, work experience, why this subject, future goals...', rows:6},
+          {id:'words', label:'Word Count', type:'select', options:['500 words','650 words (UCAS)','750 words','1,000 words']},
+        ],
+        system:'You are an expert university admissions tutor who has helped hundreds of students gain offers at top universities. Write a compelling, authentic personal statement that shows genuine intellectual curiosity, relevant experience and future potential. Hook with a strong opening (not a quote). Demonstrate subject passion with specific examples. Connect experiences to degree choice. Show self-awareness and growth. Close with a forward-looking statement. Warm but professional tone. End with ##XAI## markers noting tone choices and what the student should personalise.',
+        promptFn:function(d){ return 'Programme: '+d.subject+'. Institution type: '+d.university+'. Background: '+d.background+'. Length: '+d.words+'.'; }
+      },
+      'proposal': { label:'Research Proposal', icon:'&#x1F4CB;',
+        fields:[
+          {id:'topic', label:'Research Topic', type:'text', placeholder:'e.g. The impact of social media on adolescent mental health'},
+          {id:'level', label:'Academic Level', type:'select', options:['Undergraduate Dissertation','Masters Dissertation','PhD Proposal']},
+          {id:'field', label:'Field of Study', type:'text', placeholder:'e.g. Psychology / Sociology'},
+          {id:'notes', label:'Initial Ideas / Context', type:'textarea', placeholder:'Any initial thoughts, methodologies you\'re considering, or gaps in literature you want to address...', rows:4},
+        ],
+        system:'You are an academic research supervisor. Draft a formal research proposal. Structure: Title, Abstract (150 words), Introduction & Background, Research Questions/Objectives (3-4 clear questions), Literature Review (key themes and identified gaps), Methodology (design, data collection, analysis approach, ethical considerations), Expected Contributions, Timeline (phased), Bibliography (plausible placeholder sources). Academic, precise tone. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Research topic: '+d.topic+'. Level: '+d.level+'. Field: '+d.field+'.'+(d.notes?' Initial ideas: '+d.notes:''); }
+      }
+    }
+  },
+
+  lecture: { title:'Lecture Summarizer', sub:'Convert lecture transcripts and recordings into structured notes',
+    subs:{
+      'lecture': { label:'Lecture Summary', icon:'&#x1F3A4;',
+        fields:[
+          {id:'module', label:'Module / Course Name', type:'text', placeholder:'e.g. Introduction to Macroeconomics'},
+          {id:'transcript', label:'Lecture Transcript / Notes', type:'textarea', placeholder:'Paste the lecture transcript, auto-captions, or your rough notes here...', rows:8},
+          {id:'level', label:'Study Level', type:'select', options:['First Year','Second Year','Third Year','Postgraduate']},
+        ],
+        system:'You are a brilliant academic note-taker. Distil this lecture into beautifully structured notes. Include: # Module name + lecture title, ## 4-6 main sections with clear headings, bullet points for key ideas (concise, memorable), **Key Terms** defined in brackets, any formulas or frameworks presented, a "Key Takeaways" box (5 bullets), and "Questions to explore further" (3 questions). End with ##XAI## markers.',
+        promptFn:function(d){ return 'Module: '+d.module+'. Level: '+d.level+'. Transcript: """'+d.transcript+'"""'; }
+      }
+    }
+  },
+
+  research: { title:'Research Assistant', sub:'Literature reviews, argument mapping and thesis development',
+    subs:{
+      'lit': { label:'Literature Review', icon:'&#x1F4DA;',
+        fields:[
+          {id:'topic', label:'Research Topic', type:'text', placeholder:'e.g. Machine learning applications in medical diagnosis'},
+          {id:'field', label:'Academic Field', type:'text', placeholder:'e.g. Computer Science / Medicine'},
+          {id:'scope', label:'Scope / Key Themes', type:'textarea', placeholder:'Any specific angles, time periods, or aspects you want covered...', rows:4},
+          {id:'level', label:'Level', type:'select', options:['Undergraduate','Masters','PhD']},
+        ],
+        system:'You are a senior academic researcher. Write a structured literature review. Include: Introduction (scope, purpose, key themes to be addressed), Thematic sections (organise by theme not chronology — 4-6 themes), within each theme: synthesise the scholarly conversation, note agreements, debates and gaps, Critical Analysis section (key limitations, methodological concerns, conflicting findings), Conclusion (summary of knowledge landscape and research gaps), References (plausible academic placeholder citations in APA format). Use hedged language. End with ##XAI## markers noting scope of real sources needed.',
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Field: '+d.field+'. Level: '+d.level+'. Scope: '+d.scope+'.'; }
+      },
+      'argue': { label:'Argument Mapping', icon:'&#x2696;&#xFE0F;',
+        fields:[
+          {id:'topic', label:'Debate / Issue', type:'text', placeholder:'e.g. Should university education be free?'},
+          {id:'context', label:'Context / Background', type:'textarea', placeholder:'Any specific context or perspectives to map...', rows:4},
+        ],
+        system:'You are an expert in argumentation theory. Create a comprehensive argument map. Structure: Main Question, Position A (strongest arguments, evidence, implications), Position B (strongest arguments, evidence, implications), Key Assumptions of each position, Points of Agreement between positions, Strongest objections each side faces, Overall assessment of which position has stronger evidential support (and why). Use bullet points for clarity. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Issue: '+d.topic+'. Context: '+d.context+'.'; }
+      },
+      'counter': { label:'Counterarguments', icon:'&#x1F914;',
+        fields:[
+          {id:'argument', label:'Your Main Argument / Thesis', type:'textarea', placeholder:'State your main argument or thesis clearly...', rows:4},
+          {id:'level', label:'Academic Level', type:'select', options:['Undergraduate','Masters','PhD']},
+        ],
+        system:'You are a critical thinking expert. Given this argument, generate the strongest possible counterarguments and rebuttals. Structure: 1) Summary of the main argument, 2) Top 5 Counterarguments (each with: the objection clearly stated, the evidence or logic behind it, its relative strength: Strong/Moderate/Weak), 3) Potential Rebuttals to each counterargument (how the original position could respond), 4) How to strengthen the original argument to pre-empt these objections. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Argument to challenge: "'+d.argument+'". Level: '+d.level+'.'; }
+      },
+      'thesis': { label:'Thesis Statement', icon:'&#x1F3AF;',
+        fields:[
+          {id:'topic', label:'Essay Topic / Question', type:'text', placeholder:'e.g. The role of women in World War II'},
+          {id:'position', label:'Your Initial Position', type:'text', placeholder:'e.g. Women\'s contributions were essential but underrecognised'},
+          {id:'level', label:'Academic Level', type:'select', options:['Undergraduate','Masters','PhD']},
+          {id:'evidence', label:'Key Evidence You Have', type:'textarea', placeholder:'What evidence or examples are you working with?', rows:3},
+        ],
+        system:'You are an expert academic writing coach. Generate 5 strong thesis statement options for the topic and position provided. For each: write the full thesis statement (1-3 sentences), explain what claim it makes, what it implies about the essay structure, and rate its strength (and why). Then recommend the strongest option with justification. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Position: '+d.position+'. Level: '+d.level+'. Evidence: '+d.evidence+'.'; }
+      }
+    }
+  },
+
+  slides: { title:'Presentation Builder', sub:'Generate real .pptx slide decks from any topic or notes',
+    subs:{
+      'slides': { label:'Build Presentation', icon:'&#x1F4CA;',
+        fields:[
+          {id:'topic', label:'Presentation Topic / Title', type:'text', placeholder:'e.g. The causes and consequences of World War I'},
+          {id:'audience', label:'Audience', type:'select', options:['University Seminar','Conference Presentation','Class Assignment','Tutorial Group','Research Poster']},
+          {id:'slides', label:'Number of Slides', type:'select', options:['6 slides','8 slides','10 slides','12 slides','15 slides']},
+          {id:'content', label:'Key Content / Notes', type:'textarea', placeholder:'Any key points, evidence or structure you want included...', rows:4},
+        ],
+        system:'You are a presentation design expert. Generate slide content as a valid JSON object only — no markdown, no explanation, just raw JSON. Structure: {"title":"Presentation Title","slides":[{"title":"Slide Title","layout":"title-content","bullets":["Point one — max 8 words","Point two","Point three","Point four"],"notes":"Speaker notes here 1-2 sentences"},{"title":"Slide 2","layout":"two-column","left":["Left point 1","Left point 2"],"right":["Right point 1","Right point 2"],"notes":"Notes"}]}. Include a cover slide (layout: title-only), content slides, and a conclusion slide. Bullet points max 8 words each. Academic, clear content. Your entire response must be only the JSON object.',
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Audience: '+d.audience+'. Slides: '+d.slides+'.'+(d.content?' Key content: '+d.content:''); }
+      }
+    }
+  },
+
+  flash: { title:'Flashcard Generator', sub:'Auto-generate study flashcards from any topic or text',
+    subs:{
+      'flash': { label:'Generate Flashcards', icon:'&#x26A1;',
+        fields:[
+          {id:'topic', label:'Topic', type:'text', placeholder:'e.g. Photosynthesis'},
+          {id:'level', label:'Level', type:'select', options:['GCSE / High School','Undergraduate','Masters / Advanced']},
+          {id:'count', label:'Number of Cards', type:'select', options:['10 cards','15 cards','20 cards','25 cards']},
+          {id:'content', label:'Source Material (optional)', type:'textarea', placeholder:'Paste source text to generate cards from, or leave blank to generate from the topic...', rows:4},
+        ],
+        system:'You are a learning science expert who creates effective flashcards using the Leitner system principles. Generate flashcard sets as JSON only: {"cards":[{"q":"Question here?","a":"Answer here — concise but complete"},{"q":"...","a":"..."}]}. Mix question types: definition questions, "what is", "explain why", application questions, fill-in-the-blank style. Keep answers to 1-3 sentences max. Progressive difficulty from basic recall to application. Your entire response must be only the JSON object.',
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Level: '+d.level+'. Cards: '+d.count+'.'+(d.content?' Source: '+d.content:''); }
+      }
+    }
+  },
+
+  cite: { title:'Citation Generator', sub:'Format references in any academic citation style',
+    subs:{
+      'cite': { label:'Format Citations', icon:'&#x1F4DA;',
+        fields:[
+          {id:'style', label:'Citation Style', type:'select', options:['Harvard','APA (7th Edition)','MLA (9th Edition)','Chicago (Author-Date)','Chicago (Notes)','Oxford','Vancouver','IEEE']},
+          {id:'type', label:'Source Type', type:'select', options:['Journal Article','Book','Book Chapter','Website','Newspaper Article','Report / Government Document','Conference Paper','Thesis / Dissertation']},
+          {id:'details', label:'Source Details', type:'textarea', placeholder:'Paste all available details: author(s), title, year, journal/publisher, volume, issue, pages, URL, DOI, access date...', rows:5},
+        ],
+        system:'You are a citation formatting expert. Format the provided source details into a correctly formatted reference. Show: 1) The complete formatted reference in the specified style, 2) The in-text citation format for the same source, 3) A brief explanation of any fields that were missing or inferred. If details are incomplete, format what is available and clearly note [MISSING: field name] for any required fields not provided. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Style: '+d.style+'. Source type: '+d.type+'. Details: '+d.details+'.'; }
+      }
+    }
+  }
+  ,
+  notebook: { title:'NexGen Notebook - AI Research Consultant', sub:'Upload documents and get grounded critique, analysis and recommendations based solely on your content',
+    subs:{
+      'research': { label:'Research Critique', icon:'&#x1F4AC;',
+        fields:[
+          {id:'context', label:'Research Focus / What to evaluate', type:'text', placeholder:'e.g. Evaluate the methodology and validity of this study'},
+          {id:'level', label:'Critique Depth', type:'select', options:['Overview critique','Standard academic critique','PhD-level critical review']},
+          {id:'content', label:'Paste Your Document(s)', type:'textarea', placeholder:'Paste the full text of your research paper, study, report or article here. The AI will ground all responses strictly in this content — no external information will be added unless flagged clearly.', rows:10},
+        ],
+        system:"You are a senior academic peer reviewer and research consultant. Your responses must be STRICTLY GROUNDED in the documents provided by the user. Do not add external facts, studies or claims not present in the submitted text. If you reference something, quote or paraphrase directly from the uploaded content. Structure your critique as: 1) Executive Summary of the Document (what it claims to do and what it actually does), 2) Strengths — what the document does well, with specific evidence from the text, 3) Critical Weaknesses — methodology gaps, logical flaws, unsupported claims, missing evidence — cite specific sections, 4) Validity Assessment — is the reasoning sound? Are conclusions supported by the evidence presented?, 5) Recommendations — specific, actionable improvements grounded in the document's own stated objectives. Clearly flag with [EXTERNAL NOTE] any time you draw on knowledge outside the provided text. End with ##XAI## markers noting your analytical approach.",
+        promptFn:function(d){ return 'Research focus: '+d.context+'. Critique depth: '+d.level+'. DOCUMENT TO ANALYSE:\n\n"""'+d.content+'"""'; }
+      },
+      'bizplan': { label:'Business Plan Analysis', icon:'&#x1F4BC;',
+        fields:[
+          {id:'context', label:'Analysis Focus', type:'text', placeholder:'e.g. Evaluate the financial projections and market assumptions'},
+          {id:'audience', label:'Reviewer Perspective', type:'select', options:['Investor / VC perspective','Academic assessor','Bank / Lender perspective','Strategic partner perspective','General critical review']},
+          {id:'content', label:'Paste Your Business Plan', type:'textarea', placeholder:'Paste the full business plan, executive summary, or sections you want analysed. All analysis will be grounded strictly in what you provide.', rows:10},
+        ],
+        system:"You are a senior business analyst and investment consultant. Your analysis must be STRICTLY GROUNDED in the business plan document provided. Do not add market data, competitor information or financial benchmarks not present in the submitted text — if you reference external benchmarks, clearly flag with [EXTERNAL BENCHMARK]. Structure your analysis: 1) Executive Summary (what the plan proposes), 2) Strengths — what is well-evidenced and compelling in the plan, 3) Critical Gaps & Risks — assumptions not supported, missing analysis, financial projection weaknesses, market analysis gaps — cite specific sections, 4) Consistency Check — do the financial projections align with the stated strategy? Are claims internally consistent?, 5) Strategic Recommendations — specific, practical improvements the plan should address, grounded in the plan's own stated objectives and gaps identified, 6) Overall Viability Assessment from the selected reviewer perspective. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Analysis focus: '+d.context+'. Reviewer perspective: '+d.audience+'. BUSINESS PLAN:\n\n"""'+d.content+'"""'; }
+      },
+      'docreview': { label:'Document Review', icon:'&#x1F4CB;',
+        fields:[
+          {id:'doctype', label:'Document Type', type:'select', options:['Contract / Legal Agreement','Policy Document','Academic Paper','Technical Report','Proposal / Pitch','Grant Application','White Paper','Other']},
+          {id:'context', label:'What to look for', type:'text', placeholder:'e.g. Identify ambiguous clauses, missing sections, or unsupported claims'},
+          {id:'content', label:'Paste Your Document', type:'textarea', placeholder:'Paste the full document text here. The analysis will be grounded entirely in what you provide.', rows:10},
+        ],
+        system:"You are an expert document reviewer. You must GROUND ALL RESPONSES strictly in the document provided. Do not add information from outside the text. Structure your review: 1) Document Overview (type, purpose, key sections identified), 2) Structure & Completeness Assessment (what sections are present and what appears to be missing based on the document's own stated scope), 3) Content Analysis — key claims, commitments, or provisions identified, 4) Issues & Red Flags — ambiguities, contradictions, gaps, unsupported assertions — cite specific language from the document, 5) Specific Recommendations — what should be added, clarified or revised, referencing exact sections. Note: this is an analytical review tool, not legal or professional advice — always consult a qualified professional for consequential decisions. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Document type: '+d.doctype+'. Review focus: '+d.context+'. DOCUMENT:\n\n"""'+d.content+'"""'; }
+      },
+      'recommend': { label:'Recommendations', icon:'&#x2B50;',
+        fields:[
+          {id:'objective', label:'What recommendations are needed for', type:'text', placeholder:'e.g. How to improve this marketing strategy to reach a younger demographic'},
+          {id:'constraints', label:'Known Constraints (optional)', type:'text', placeholder:'e.g. Budget under $50K, team of 3, 6-month timeline'},
+          {id:'content', label:'Paste Your Document(s)', type:'textarea', placeholder:'Paste the document, report, plan or content you want recommendations based on. All suggestions will be grounded in what you provide.', rows:9},
+        ],
+        system:'You are a strategic consultant. Generate specific, actionable recommendations STRICTLY GROUNDED in the document provided. Every recommendation must trace back to something in the submitted content: a stated objective, an identified gap, or an existing element that could be enhanced. Structure: 1) Summary of Current State (based on the document), 2) Key Opportunities Identified (grounded in the document content), 3) Prioritised Recommendations labelled HIGH/MEDIUM/LOW priority, state the specific problem it solves (cite document section), the recommended action, and expected outcome, 4) Implementation Considerations based on any constraints stated in the document or user input. Flag clearly with [ASSUMPTION] any recommendation that requires information not in the provided text. End with ##XAI## markers.',
+        promptFn:function(d){ return 'Recommendation objective: '+d.objective+'.'+(d.constraints?' Constraints: '+d.constraints+'.' :'')+' DOCUMENT:\n\n"""'+d.content+'"""'; }
+      },
+      'debate': { label:'Academic Debate', icon:'&#x2696;&#xFE0F;',
+        fields:[
+          {id:'position', label:'Position to Critique or Debate', type:'text', placeholder:'e.g. Argue against the author\'s central thesis, or steelman the opposing view'},
+          {id:'mode', label:'Debate Mode', type:'select', options:['Steel-man the opposing view','Challenge the author\'s thesis','Identify logical fallacies','Both sides balanced analysis','Socratic questioning']},
+          {id:'content', label:'Paste Your Document / Argument', type:'textarea', placeholder:'Paste the paper, essay, article or argument to be debated. The debate will be grounded strictly in the text provided.', rows:9},
+        ],
+        system:"You are an expert in critical thinking, formal argumentation and academic debate. You must GROUND ALL RESPONSES in the document provided. Do not introduce external arguments not traceable to the text. Structure based on the selected mode. For each point made — whether supporting or challenging — quote or paraphrase directly from the document as evidence. Flag with [EXTERNAL REASONING] any point that draws on logic or knowledge outside the provided text. Use formal debate structure: claim → evidence (from document) → warrant (logical connection). End with a balanced meta-commentary on the overall strength of the argument as presented. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Position/focus: '+d.position+'. Debate mode: '+d.mode+'. DOCUMENT:\n\n"""'+d.content+'"""'; }
+      }
+    }
+  },
+
+  stem: { title:'STEM Education', sub:'Concept explanations, problem solving, proofs, lab design and code for science, technology, engineering and mathematics',
+    subs:{
+      'explain': { label:'Concept Explainer', icon:'&#x1F4A1;',
+        fields:[
+          {id:'concept', label:'Concept or Topic', type:'text', placeholder:'e.g. Quantum entanglement, Fourier transforms, CRISPR gene editing'},
+          {id:'level', label:'Academic Level', type:'select', options:['GCSE / High School','Undergraduate Year 1-2','Undergraduate Year 3-4','Masters / Postgraduate','PhD / Research']},
+          {id:'background', label:'Prior Knowledge (optional)', type:'text', placeholder:'e.g. Comfortable with calculus, familiar with basic chemistry'},
+          {id:'style', label:'Explanation Style', type:'select', options:['Step-by-step with analogies','Formal mathematical treatment','Intuitive conceptual overview','Exam-focused key points','Visual/diagram-based description']},
+        ],
+        system:"You are an expert STEM educator who can explain any concept from first principles. Calibrate depth precisely to the academic level. Use analogies from everyday life to build intuition before introducing formal definitions. Structure: 1) Core Intuition (what is this really?), 2) Formal Definition/Statement, 3) Key Principles or Equations (explain each variable), 4) Worked Example, 5) Common Misconceptions, 6) Real-World Applications, 7) What to Study Next. Use markdown formatting with clear headers. For equations, write them clearly in text form (e.g. E = mc^2). End with ##XAI## markers.",
+        promptFn:function(d){ return 'Concept: '+d.concept+'. Level: '+d.level+'. Style: '+d.style+'.'+(d.background?' Background: '+d.background+'.':''); }
+      },
+      'problems': { label:'Problem Solver', icon:'&#x2795;',
+        fields:[
+          {id:'subject', label:'Subject', type:'select', options:['Mathematics','Physics','Chemistry','Biology','Computer Science','Engineering','Statistics','Economics']},
+          {id:'level', label:'Level', type:'select', options:['GCSE / A-Level','Undergraduate Year 1','Undergraduate Year 2-3','Masters Level']},
+          {id:'problem', label:'Problem Statement', type:'textarea', placeholder:'Paste or type the full problem here. Include all given values, constraints and what you need to find...', rows:6},
+          {id:'approach', label:'Show Working Style', type:'select', options:['Full step-by-step working','Guided hints only (I want to try)','Key steps with explanation','Quick solution + verification']},
+        ],
+        system:"You are a world-class STEM tutor. Solve the problem completely with clear, well-structured working. Show every step with brief explanations of why each step is taken. Identify the key principles or theorems applied. Check your answer at the end. If the problem has multiple valid approaches, note the most elegant. For pure mathematics, show rigorous working. Flag any assumptions made. End with ##XAI## markers explaining your problem-solving approach.",
+        promptFn:function(d){ return 'Subject: '+d.subject+'. Level: '+d.level+'. Working style: '+d.approach+'. Problem: +d.problem+'; }
+      },
+      'proofguide': { label:'Proof Guide', icon:'&#x221A;',
+        fields:[
+          {id:'theorem', label:'Theorem or Statement to Prove', type:'textarea', placeholder:'e.g. Prove that the square root of 2 is irrational. Or paste the full theorem statement...', rows:4},
+          {id:'subject', label:'Area of Mathematics', type:'select', options:['Real Analysis','Linear Algebra','Abstract Algebra / Group Theory','Number Theory','Calculus / Differential Equations','Discrete Mathematics / Combinatorics','Topology','Probability Theory']},
+          {id:'technique', label:'Proof Technique (if specified)', type:'select', options:['Direct proof','Proof by contradiction','Mathematical induction','Proof by contrapositive','Constructive proof','Any / Let AI choose best method']},
+          {id:'level', label:'Level', type:'select', options:['Undergraduate Year 1-2','Undergraduate Year 3-4','Masters','PhD']},
+        ],
+        system:"You are an expert mathematician. Write a rigorous, clear mathematical proof. Structure: 1) State what we are proving and any relevant definitions, 2) State the proof technique chosen and why it is appropriate, 3) Write the full proof with every step justified, referencing the specific axiom, lemma or theorem used at each step, 4) Mark QED clearly at the end, 5) Note any generalisations or related results. Use formal mathematical language. Flag any steps that require additional lemmas. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Theorem: +d.theorem+. Area: '+d.subject+'. Technique: '+d.technique+'. Level: '+d.level+'.'; }
+      },
+      'labdesign': { label:'Lab Design', icon:'&#x1F9EC;',
+        fields:[
+          {id:'objective', label:'Research Objective / Question', type:'text', placeholder:'e.g. Investigate the effect of temperature on enzyme activity'},
+          {id:'subject', label:'Science Subject', type:'select', options:['Biology / Life Sciences','Chemistry','Physics','Environmental Science','Biochemistry','Neuroscience','Materials Science']},
+          {id:'level', label:'Academic Level', type:'select', options:['GCSE / A-Level','Undergraduate','Masters / Research']},
+          {id:'constraints', label:'Resources / Constraints', type:'text', placeholder:'e.g. Standard university lab, budget £200, 3-hour session'},
+          {id:'context', label:'Background / Context', type:'textarea', placeholder:'Any relevant background, hypothesis or existing data...', rows:4},
+        ],
+        system:"You are an expert experimental scientist and laboratory instructor. Design a complete, rigorous laboratory experiment. Structure: 1) Hypothesis (clearly stated, testable), 2) Variables (independent, dependent, controlled), 3) Materials and Equipment list, 4) Method (numbered, step-by-step, reproducible), 5) Safety Considerations, 6) Data Collection Table template, 7) Statistical Analysis approach (how to analyse the data), 8) Expected Results and how they would support or refute the hypothesis, 9) Potential Sources of Error and mitigation. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Objective: '+d.objective+'. Subject: '+d.subject+'. Level: '+d.level+'. Constraints: '+d.constraints+'.'+(d.context?' Background: '+d.context:''); }
+      },
+      'codelearn': { label:'Code & Algorithms', icon:'&#x1F4BB;',
+        fields:[
+          {id:'topic', label:'Topic or Algorithm', type:'text', placeholder:'e.g. Binary search trees, Dijkstra algorithm, neural network backpropagation'},
+          {id:'language', label:'Programming Language', type:'select', options:['Python','Java','C++','C','JavaScript','R','MATLAB','Julia','Pseudocode']},
+          {id:'level', label:'Level', type:'select', options:['Beginner (no prior coding)','Intermediate (1-2 years)','Advanced (3+ years)','Computer Science degree level']},
+          {id:'focus', label:'Focus', type:'select', options:['Explain the concept + code it','Optimise my existing code','Debug and explain errors','Compare approaches','Time/space complexity analysis']},
+          {id:'code', label:'Your Code (if debugging/optimising)', type:'textarea', placeholder:'Paste your code here if you want debugging, optimisation or explanation of existing code...', rows:5},
+        ],
+        system:"You are a senior software engineer and computer science educator. Explain algorithms and data structures with rigour and clarity. For code: write clean, well-commented code with type hints where applicable. Explain time and space complexity using Big O notation. Show the algorithm working through a concrete example step by step. For debugging: identify the bug, explain why it occurs, and provide the corrected code. Structure: Concept Overview, Algorithm/Code, Worked Example, Complexity Analysis, Common Pitfalls. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Language: '+d.language+'. Level: '+d.level+'. Focus: '+d.focus+'.'+(d.code?' Code: +d.code+':''); }
+      },
+      'formulasheet': { label:'Formula Sheet', icon:'&#x1F4D0;',
+        fields:[
+          {id:'subject', label:'Subject / Module', type:'text', placeholder:'e.g. Thermodynamics, Organic Chemistry reactions, Classical Mechanics'},
+          {id:'level', label:'Level', type:'select', options:['GCSE / A-Level','Undergraduate Year 1','Undergraduate Year 2-3','Masters Level']},
+          {id:'topics', label:'Specific Topics to Cover', type:'textarea', placeholder:'List the specific topics or chapters you want included, or leave blank for a comprehensive sheet...', rows:4},
+          {id:'format', label:'Format', type:'select', options:['Formula + variable definitions + units','Formula only (quick reference)','Formula + derivation sketch + application notes']},
+        ],
+        system:"You are an expert academic tutor. Create a comprehensive, well-organised formula reference sheet. Group formulas by topic with clear headers. For each formula: show the formula clearly, define every variable with its SI units, note any important conditions or assumptions, and include a brief application note if the format requires it. Include a quick-reference summary table at the top showing the most important formulas. Flag any formulas where sign conventions differ between textbooks. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Subject: '+d.subject+'. Level: '+d.level+'. Format: '+d.format+'.'+(d.topics?' Topics: '+d.topics:''); }
+      }
+    }
+  }
+
+};
+
+// ── MODULE SWITCHING ────────────────────────────────────────────
+function setTool(tool){
+  _tool = tool;
+  Object.keys(TOOLS).forEach(function(t){
+    var btn = document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn) btn.className = 'tool-tab'+(t===tool?' active':'');
+  });
+  var firstSub = Object.keys(TOOLS[tool].subs)[0];
+  setSubTool(tool, firstSub);
+}
+
+function setSubTool(tool, sub){
+  _tool = tool; _sub = sub;
+  // Highlight sidebar
+  document.querySelectorAll('.sb-item').forEach(function(el){
+    var id = el.id;
+    if(id) el.className = 'sb-item'+(id==='sb-'+tool+'-'+sub?' active':'');
+  });
+  renderTool(tool, sub);
+}
+
+// ── FORM RENDERER ───────────────────────────────────────────────
+function renderTool(tool, sub){
+  var T  = TOOLS[tool];
+  var S  = T.subs[sub] || T.subs[Object.keys(T.subs)[0]];
+  document.getElementById('wsTitle').textContent = T.title;
+  document.getElementById('wsSub').textContent   = T.sub;
+
+  var fieldsHtml = S.fields.map(function(f){
+    var inp = '';
+    if(f.type==='textarea'){
+      // Add file upload button above each textarea
+      var uploadId = 'upl_'+f.id;
+      var nameId   = 'upl_name_'+f.id;
+      var uploadBtn = '<div class="upload-btn-wrap">'
+        + '<label class="upload-btn" for="'+uploadId+'">&#x1F4CE; Upload File</label>'
+        + '<input type="file" id="'+uploadId+'" accept=".txt,.md,.pdf,.docx,.doc,.rtf,.csv,.json" style="display:none" onchange="handleUpload(this,\'f_'+f.id+'\')" />'
+        + '<span class="upload-file-name" id="'+nameId+'">PDF, Word, TXT supported</span>'
+        + '</div>';
+      inp = uploadBtn + '<textarea class="field-textarea" id="f_'+f.id+'" rows="'+(f.rows||4)+'" placeholder="'+esc(f.placeholder||'')+'"></textarea>';
+    } else if(f.type==='select'){
+      inp = '<select class="field-select" id="f_'+f.id+'">'+ f.options.map(function(o){return '<option>'+esc(o)+'</option>';}).join('')+'</select>';
+    } else {
+      inp = '<input type="text" class="field-input" id="f_'+f.id+'" placeholder="'+esc(f.placeholder||'')+'"/>';
+    }
+    return '<div><label class="field-label">'+esc(f.label)+'</label>'+inp+'</div>';
+  }).join('');
+
+  var html = '<div class="panel">'
+    + '<div class="panel-title">'+esc(S.icon)+' '+esc(S.label)+'</div>'
+    + fieldsHtml
+    + '<div class="btn-row"><button class="btn btn-primary" id="genBtn" onclick="generate()">&#x2728; Generate</button>'
+    + '<button class="btn btn-ghost" onclick="clearForm()">Clear</button></div>'
+    + '</div><div id="outputArea"></div>';
+
+  // Inject grounding notice for notebook tool
+  if(tool === 'notebook'){
+    var notice = '<div class="notebook-notice">'
+      + '<span>&#x1F9EA;</span>'
+      + '<div><strong>Grounded AI — Document-only analysis.</strong> NexGen Notebook bases all responses exclusively on the documents you paste. No external facts are added unless clearly flagged. The more complete your pasted text, the more precise the analysis.</div>'
+      + '</div>';
+    html = html.replace('<div class="btn-row">', notice + '<div class="btn-row">');
+  }
+  document.getElementById('wsBody').innerHTML = html;
+}
+
+function clearForm(){
+  document.querySelectorAll('.field-input,.field-textarea').forEach(function(el){ el.value=''; });
+}
+
+// ── GENERATION ENGINE ───────────────────────────────────────────
+function generate(){
+  if(_busy) return;
+  if(!checkUsage()) return;
+
+  var T = TOOLS[_tool];
+  var S = T.subs[_sub] || T.subs[Object.keys(T.subs)[0]];
+  var data = {};
+  S.fields.forEach(function(f){
+    var el = document.getElementById('f_'+f.id);
+    data[f.id] = el ? el.value.trim() : '';
+  });
+
+  var required = S.fields.filter(function(f){ return f.type !== 'textarea' && !data[f.id]; });
+  if(required.length){ toast('Please fill in: '+required[0].label); return; }
+
+  // Slides mode — pure JSON → build pptx
+  if(_tool === 'slides'){
+    generatePptx(S, data); return;
+  }
+  // Flashcard mode — pure JSON → render cards
+  if(_tool === 'flash'){
+    generateFlash(S, data); return;
+  }
+
+  _busy = true;
+  var btn = document.getElementById('genBtn');
+  if(btn){ btn.disabled=true; btn.textContent='\u23F3 Generating\u2026'; }
+
+  document.getElementById('outputArea').innerHTML =
+    '<div class="output-wrap"><div class="output-top"><div class="output-label">&#x1F9EC; NexGen Ultra &mdash; Writing</div></div>'
+    +'<div class="output-body" id="outputBody"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Thinking\u2026</span></div></div>';
+
+  var prompt = S.promptFn(data);
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4096,system:S.system,messages:[{role:'user',content:prompt}]})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var text = (d.content&&d.content[0]&&d.content[0].text)||'Error generating content.';
+    _lastOutput = text;
+    renderOutput(text, S.label);
+    incrementUsage();
+  })
+  .catch(function(e){
+    document.getElementById('outputBody').innerHTML='<div style="color:var(--red);font-size:12px">Error: '+esc(e.message)+'</div>';
+  })
+  .finally(function(){
+    _busy=false;
+    if(btn){btn.disabled=false;btn.textContent='\u2728 Generate';}
+  });
+}
+
+function renderOutput(text, label){
+  var M = '##XAI##';
+  var i1 = text.indexOf(M), i2 = i1!==-1 ? text.indexOf(M,i1+M.length):-1;
+  var main = text, xai = '';
+  if(i1!==-1&&i2!==-1){ main=text.slice(0,i1).trim(); xai=text.slice(i1+M.length,i2).trim(); }
+
+  var html = '<div class="output-wrap">'
+    +'<div class="output-top"><div class="output-label">&#x1F4C4; '+esc(label)+'</div>'
+    +'<div class="output-actions">'
+    +'<button class="btn btn-ghost" style="padding:6px 11px;font-size:9px" onclick="exportPDF()">&#x1F4E5; PDF</button>'
+    +'<button class="btn btn-ghost" style="padding:6px 11px;font-size:9px" onclick="copyOut()">&#x1F4CB; Copy</button>'
+    +'</div></div>'
+    +'<div class="output-body" id="outputBody">'+mdRender(main)+'</div>'
+    +'</div>';
+
+  if(xai){
+    html+='<div class="xai-block"><div class="xai-header"><span>&#x1F9E0;</span> Explainable AI</div>'
+      +'<div style="font-size:12px;color:var(--dim);line-height:1.75">'+mdRender(xai)+'</div></div>';
+  }
+
+  html+='<div class="watermark"><span>&#x1F4AC; Generated by <strong>NexGen Study</strong> &mdash; Powered by NexGen Ultra</span>'
+    +'<span style="color:var(--accent)"><strong>corverxis.com</strong></span></div>';
+
+  document.getElementById('outputArea').innerHTML = html;
+  document.getElementById('outputArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── PPTX GENERATION ─────────────────────────────────────────────
+function generatePptx(S, data){
+  _busy=true;
+  var btn=document.getElementById('genBtn');
+  if(btn){btn.disabled=true;btn.textContent='\u23F3 Building deck\u2026';}
+  document.getElementById('outputArea').innerHTML =
+    '<div class="output-wrap"><div class="output-top"><div class="output-label">&#x1F4CA; Generating Presentation</div></div>'
+    +'<div class="output-body"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Building your slides\u2026</span></div></div>';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4096,system:S.system,
+      messages:[{role:'user',content:S.promptFn(data)},{role:'assistant',content:'{'}]})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var text = '{'+((d.content&&d.content[0]&&d.content[0].text)||'');
+    var jsonData = null;
+    try{ jsonData=JSON.parse(text.trim().replace(/^```json\s*/i,'').replace(/```\s*$/,'').trim()); }
+    catch(e){
+      var m=text.match(/\{[\s\S]*?"slides"\s*:\s*\[[\s\S]*?\]\s*\}/);
+      if(m){try{jsonData=JSON.parse(m[0]);}catch(e2){}}
+    }
+    if(!jsonData||!jsonData.slides){
+      document.getElementById('outputArea').innerHTML='<div class="output-wrap"><div class="output-body"><div style="color:var(--red);font-size:12px">Could not generate slides. Please try a more specific topic.</div></div></div>';
+      return;
+    }
+    buildStudyPptx(jsonData, data.topic);
+    incrementUsage();
+  })
+  .catch(function(e){ toast('Error: '+e.message); })
+  .finally(function(){ _busy=false; if(btn){btn.disabled=false;btn.textContent='\u2728 Generate';} });
+}
+
+function buildStudyPptx(jsonData, topic){
+  if(typeof PptxGenJS==='undefined'){ toast('Loading presentation library\u2026'); return; }
+  var prs=new PptxGenJS();
+  prs.layout='LAYOUT_WIDE';
+  prs.title=jsonData.title||topic||'Presentation';
+  var SH=prs.shapes;
+  var NAVY='0F2645',OCEAN='00C8FF',WHITE='FFFFFF',GREY='9BC0D8',DARK='1A2A38';
+
+  jsonData.slides.forEach(function(sd,si){
+    var sld=prs.addSlide();
+    if(si===0||sd.layout==='title-only'){
+      sld.background={color:NAVY};
+      sld.addShape(SH.RECTANGLE,{x:0,y:0,w:'100%',h:0.06,fill:{color:OCEAN}});
+      sld.addText('CORVERXIS TECHNOLOGIES — NEXGEN STUDY',{x:0.5,y:0.25,w:12,h:0.25,fontSize:7,fontFace:'Calibri',color:OCEAN,charSpacing:3});
+      sld.addText(jsonData.title||topic||'',{x:0.5,y:0.65,w:11,h:2.2,fontSize:40,fontFace:'Calibri',color:WHITE,bold:true,lineSpacingMultiple:1.1});
+      if(sd.subtitle||sd.notes) sld.addText(sd.subtitle||sd.notes||'',{x:0.5,y:3.0,w:9,h:0.5,fontSize:16,fontFace:'Calibri',color:GREY,italic:true});
+      sld.addText('corverxis.com',{x:0.5,y:7.1,w:5,h:0.22,fontSize:8,fontFace:'Calibri',color:GREY});
+    } else {
+      sld.background={color:WHITE};
+      sld.addShape(SH.RECTANGLE,{x:0,y:0,w:'100%',h:1.05,fill:{color:NAVY}});
+      sld.addShape(SH.RECTANGLE,{x:0,y:0,w:'100%',h:0.055,fill:{color:OCEAN}});
+      sld.addText(sd.title||'',{x:0.4,y:0.1,w:12.4,h:0.82,fontSize:24,fontFace:'Calibri',color:WHITE,bold:true,valign:'middle'});
+      sld.addText(String(si),{x:12.5,y:7.12,w:0.4,h:0.18,fontSize:7,fontFace:'Calibri',color:'CCCCCC',align:'right'});
+      sld.addText('NexGen Study \u00b7 corverxis.com',{x:0.4,y:7.12,w:5,h:0.18,fontSize:7,fontFace:'Calibri',color:'CCCCCC'});
+      if(sd.layout==='two-column'){
+        (sd.left||[]).forEach(function(pt,j){
+          sld.addShape(SH.OVAL,{x:0.38,y:1.65+j*0.72,w:0.13,h:0.13,fill:{color:OCEAN}});
+          sld.addText(pt,{x:0.6,y:1.56+j*0.72,w:5.8,h:0.62,fontSize:14,fontFace:'Calibri',color:DARK});
+        });
+        sld.addShape(SH.LINE,{x:6.6,y:1.18,w:0,h:5.7,line:{color:'D0DCE8',width:1}});
+        (sd.right||[]).forEach(function(pt,j){
+          sld.addShape(SH.OVAL,{x:6.82,y:1.65+j*0.72,w:0.13,h:0.13,fill:{color:OCEAN}});
+          sld.addText(pt,{x:7.04,y:1.56+j*0.72,w:5.8,h:0.62,fontSize:14,fontFace:'Calibri',color:DARK});
+        });
+      } else {
+        (sd.bullets||[]).forEach(function(pt,j){
+          sld.addShape(SH.OVAL,{x:0.38,y:1.6+j*0.72,w:0.13,h:0.13,fill:{color:OCEAN}});
+          sld.addText(pt,{x:0.6,y:1.5+j*0.72,w:12.1,h:0.62,fontSize:15,fontFace:'Calibri',color:DARK});
+        });
+      }
+    }
+    if(sd.notes) sld.addNotes(sd.notes);
+  });
+
+  var fname=(jsonData.title||topic||'presentation').replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0,50)+'.pptx';
+  prs.write({outputType:'blob'}).then(function(blob){
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
+    toast('\u2713 '+fname+' downloaded!');
+    document.getElementById('outputArea').innerHTML=
+      '<div class="output-wrap"><div class="output-top"><div class="output-label">&#x1F4CA; Presentation Ready</div></div>'
+      +'<div class="output-body"><p style="color:var(--green)">&#x2705; <strong>'+esc(fname)+'</strong> downloaded &mdash; opens in PowerPoint or Google Slides.</p></div></div>'
+      +'<div class="watermark"><span>&#x1F4CA; Generated by <strong>NexGen Study</strong></span><span style="color:var(--accent)"><strong>corverxis.com</strong></span></div>';
+  }).catch(function(e){ toast('PPTX error: '+e.message); });
+}
+
+// ── FLASHCARD GENERATION ────────────────────────────────────────
+function generateFlash(S, data){
+  _busy=true;
+  var btn=document.getElementById('genBtn');
+  if(btn){btn.disabled=true;btn.textContent='\u23F3 Building cards\u2026';}
+  document.getElementById('outputArea').innerHTML=
+    '<div class="output-wrap"><div class="output-body"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Generating flashcards\u2026</span></div></div>';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4096,system:S.system,
+      messages:[{role:'user',content:S.promptFn(data)},{role:'assistant',content:'{"cards":['}]})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var text='{"cards":['+((d.content&&d.content[0]&&d.content[0].text)||']}');
+    var cards=null;
+    try{ cards=JSON.parse(text.replace(/^```json\s*/i,'').replace(/```\s*$/,'').trim()).cards; }
+    catch(e){
+      var m=text.match(/\{[\s\S]*?"cards"\s*:\s*\[[\s\S]*?\]\s*\}/);
+      if(m){try{cards=JSON.parse(m[0]).cards;}catch(e2){}}
+    }
+    if(!cards||!cards.length){
+      document.getElementById('outputArea').innerHTML='<div class="output-wrap"><div class="output-body"><div style="color:var(--red);font-size:12px">Could not generate flashcards. Try a more specific topic.</div></div></div>';
+      return;
+    }
+    renderFlashcards(cards, data.topic);
+    incrementUsage();
+  })
+  .catch(function(e){ toast('Error: '+e.message); })
+  .finally(function(){ _busy=false; if(btn){btn.disabled=false;btn.textContent='\u2728 Generate';} });
+}
+
+function renderFlashcards(cards, topic){
+  var html='<div class="output-wrap"><div class="output-top"><div class="output-label">&#x26A1; Flashcards &mdash; '+esc(topic||'')+'</div>'
+    +'<div class="output-actions"><span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Click a card to reveal the answer</span></div></div>'
+    +'<div class="output-body"><div class="flashcard-grid">';
+  cards.forEach(function(c,i){
+    html+='<div class="flashcard" id="fc'+i+'" onclick="flipCard('+i+')">'
+      +'<div class="fc-q">'+esc(c.q||c.question||'')+'</div>'
+      +'<div class="fc-a">'+esc(c.a||c.answer||'')+'</div>'
+      +'<span class="fc-flip">Tap to reveal \u25bc</span>'
+      +'</div>';
+  });
+  html+='</div></div></div>'
+    +'<div class="watermark"><span>&#x26A1; <strong>NexGen Study</strong> Flashcards</span><span style="color:var(--accent)"><strong>corverxis.com</strong></span></div>';
+  document.getElementById('outputArea').innerHTML=html;
+  document.getElementById('outputArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function flipCard(i){
+  var el=document.getElementById('fc'+i);
+  if(!el) return;
+  el.classList.toggle('revealed');
+  var flip=el.querySelector('.fc-flip');
+  if(flip) flip.textContent=el.classList.contains('revealed')?'Tap to hide \u25b2':'Tap to reveal \u25bc';
+}
+
+// ── UTILITIES ────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function mdRender(text){
+  if(!text) return '';
+  var html='',inTable=false,tableRows=[],inList=false,listType='';
+  function flushTable(){
+    if(!tableRows.length) return;
+    var h=tableRows[0],b=tableRows.slice(2);
+    html+='<table><thead><tr>'+h.map(function(c){return '<th>'+inline(c)+'</th>';}).join('')+'</tr></thead><tbody>';
+    b.forEach(function(r){html+='<tr>'+r.map(function(c){return '<td>'+inline(c)+'</td>';}).join('')+'</tr>';});
+    html+='</tbody></table>'; tableRows=[];inTable=false;
+  }
+  function flushList(){if(!inList)return;html+=listType==='ol'?'</ol>':'</ul>';inList=false;}
+  function inline(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/`(.+?)`/g,'<code>$1</code>').replace(/^> (.+)/,'<blockquote>$1</blockquote>');}
+  text.split('\n').forEach(function(line){
+    var t=line.trim();
+    if(/^\|.*\|$/.test(t)){inTable=true;tableRows.push(t.split('|').slice(1,-1).map(function(c){return c.trim();}));return;}
+    else if(inTable){flushTable();}
+    if(/^### /.test(t)){flushList();html+='<h3>'+inline(t.slice(4))+'</h3>';return;}
+    if(/^## /.test(t)){flushList();html+='<h2>'+inline(t.slice(3))+'</h2>';return;}
+    if(/^# /.test(t)){flushList();html+='<h1>'+inline(t.slice(2))+'</h1>';return;}
+    if(/^[-*] /.test(t)){if(!inList||listType!=='ul'){flushList();html+='<ul>';inList=true;listType='ul';}html+='<li>'+inline(t.slice(2))+'</li>';return;}
+    if(/^\d+\. /.test(t)){if(!inList||listType!=='ol'){flushList();html+='<ol>';inList=true;listType='ol';}html+='<li>'+inline(t.replace(/^\d+\.\s*/,''))+'</li>';return;}
+    flushList();if(t)html+='<p>'+inline(t)+'</p>';
+  });
+  flushTable();flushList();return html;
+}
+
+function copyOut(){ navigator.clipboard.writeText(_lastOutput).then(function(){toast('\u2713 Copied');}); }
+
+function exportPDF(){
+  try{
+    var jsPDFCtor=window.jspdf?window.jspdf.jsPDF:window.jsPDF;
+    var doc=new jsPDFCtor({unit:'pt',format:'a4'});
+    var W=doc.internal.pageSize.getWidth(),m=48,y=56;
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(15,38,69);
+    doc.text('NexGen Study',m,y);y+=20;
+    doc.setDrawColor(0,200,255);doc.setLineWidth(1.5);doc.line(m,y,W-m,y);y+=18;
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(20,30,40);
+    var clean=_lastOutput.replace(/##XAI##[\s\S]*?##XAI##/g,'').replace(/[#*`|]/g,'');
+    doc.splitTextToSize(clean,W-m*2).forEach(function(line){
+      if(y>780){doc.addPage();y=56;}doc.text(line,m,y);y+=14;
+    });
+    doc.setFontSize(8);doc.setTextColor(150,150,150);
+    doc.text('NexGen Study \u00b7 Corverxis Technologies \u00b7 corverxis.com \u00b7 '+new Date().toLocaleDateString(),m,818);
+    doc.save('nexgen-study-notes.pdf');
+    toast('\u2713 PDF downloaded');
+  }catch(e){toast('PDF error: '+e.message);}
+}
+
+// ── USAGE / TRIAL ────────────────────────────────────────────────
+function checkUsage(){
+  if(_user&&_user.user_metadata&&_user.user_metadata.paid) return true;
+  var used=parseInt(localStorage.getItem('ns_used')||'0',10);
+  if(used>=5){document.getElementById('upgradeWall').classList.add('on');return false;}
+  return true;
+}
+function incrementUsage(){
+  if(_user&&_user.user_metadata&&_user.user_metadata.paid) return;
+  var used=parseInt(localStorage.getItem('ns_used')||'0',10)+1;
+  localStorage.setItem('ns_used',used); updateTrialNav(used);
+}
+function updateTrialNav(used){
+  var el=document.getElementById('trialNav');if(!el)return;
+  if(_user&&_user.user_metadata&&_user.user_metadata.paid){el.style.display='none';return;}
+  el.style.display='inline-block';
+  el.textContent=(5-used)+' free left';
+}
+function upgradeTo(plan){
+  localStorage.setItem('ns_pending_plan',plan);
+  var links={scholar:'https://buy.stripe.com/14A9AT9p83rfbDddjI1oI0k',researcher:'https://buy.stripe.com/dRm7sL7h09PDePpa7w1oI0l'};
+  window.open(links[plan]||'mailto:support@corverxis.com','_blank');
+}
+
+// ── TOAST ────────────────────────────────────────────────────────
+function toast(msg){
+  var t=document.getElementById('toast');if(!t)return;
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(function(){t.style.opacity='0';},3000);
+}
+
+// ── PRIVACY MODAL ─────────────────────────────────────────────────
+function openPrivacyModal(){document.getElementById('privacyModal').style.display='flex';}
+function closePrivacyModal(){document.getElementById('privacyModal').style.display='none';}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closePrivacyModal();});
+
+// ── INIT ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  renderTool('notes','from-text');
+  updateTrialNav(parseInt(localStorage.getItem('ns_used')||'0',10));
+});
+
+// ── FILE UPLOAD HANDLER ──────────────────────────────────────────
+function handleUpload(input, targetId){
+  var file = input.files[0];
+  if(!file) return;
+
+  var nameEl = document.getElementById('upl_name_' + targetId.replace('f_',''));
+  if(nameEl) nameEl.textContent = file.name + ' (' + Math.round(file.size/1024) + 'KB)';
+
+  var ext = file.name.split('.').pop().toLowerCase();
+
+  // Plain text files — read directly
+  if(['txt','md','csv','json','rtf'].indexOf(ext) !== -1){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var el = document.getElementById(targetId);
+      if(el){ el.value = e.target.result; el.dispatchEvent(new Event('input')); }
+      toast('\u2713 ' + file.name + ' loaded');
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  // PDF — extract text using FileReader + basic text extraction
+  if(ext === 'pdf'){
+    var reader2 = new FileReader();
+    reader2.onload = function(e){
+      // Simple PDF text extraction: grab readable strings from binary
+      var arr = new Uint8Array(e.target.result);
+      var text = '';
+      var buf = '';
+      for(var i = 0; i < arr.length; i++){
+        var ch = arr[i];
+        if(ch >= 32 && ch < 127){
+          buf += String.fromCharCode(ch);
+        } else {
+          if(buf.length > 4) text += buf + ' ';
+          buf = '';
+        }
+      }
+      // Clean PDF junk tokens
+      var cleaned = text
+        .replace(/\bBT\b|\bET\b|\bTf\b|\bTd\b|\bTj\b|\bTJ\b|\bTm\b|\bcm\b|\bBMC\b|\bEMC\b|\bDo\b/g, ' ')
+        .replace(/[^\x20-\x7E\n]/g, ' ')
+        .replace(/\s{3,}/g, '\n')
+        .replace(/[A-Za-z0-9]\s{0,2}([A-Z][a-z])/g, '$1')
+        .trim();
+      var el = document.getElementById(targetId);
+      if(el){
+        el.value = cleaned.length > 100 ? cleaned : '[PDF text extraction limited — please paste the text manually for best results]';
+        el.dispatchEvent(new Event('input'));
+      }
+      toast(cleaned.length > 100 ? '\u2713 PDF text extracted — review and edit if needed' : '\u26A0 PDF extraction limited — paste text manually for best results');
+    };
+    reader2.readAsArrayBuffer(file);
+    return;
+  }
+
+  // DOCX — extract text from the zip XML
+  if(ext === 'docx' || ext === 'doc'){
+    var reader3 = new FileReader();
+    reader3.onload = function(e){
+      // Try to extract readable text from docx XML
+      var arr2 = new Uint8Array(e.target.result);
+      // Convert to string looking for w:t tags (Word text elements)
+      var raw = '';
+      for(var j = 0; j < Math.min(arr2.length, 500000); j++){
+        var c2 = arr2[j];
+        if(c2 >= 32 && c2 < 127) raw += String.fromCharCode(c2);
+        else if(c2 === 10 || c2 === 13) raw += ' ';
+      }
+      // Extract text between <w:t> tags
+      var matches = raw.match(/<w:t[^>]*>([^<]+)<\/w:t>/g)||[];
+      var wordText = matches.map(function(m){
+        return m.replace(/<[^>]+>/g,'');
+      }).join(' ').replace(/\s+/g,' ').trim();
+
+      var el = document.getElementById(targetId);
+      if(el){
+        el.value = wordText.length > 50 ? wordText : '[Word text extraction limited — please paste the text manually]';
+        el.dispatchEvent(new Event('input'));
+      }
+      toast(wordText.length > 50 ? '\u2713 Word document text extracted' : '\u26A0 Word extraction limited — paste text manually');
+    };
+    reader3.readAsArrayBuffer(file);
+    return;
+  }
+
+  toast('\u26A0 Unsupported format. Please paste the text directly or use TXT/PDF/DOCX.');
+}
+// ─────────────────────────────────────────────────────────────────
+
+</script>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SUPABASE AUTH MODULE                                         -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  'use strict';
+  document.addEventListener('DOMContentLoaded',function(){
+    _sb.auth.getSession().then(function(r){
+      if(r.data&&r.data.session) onSignedIn(r.data.session.user);
+      else showAuth('up');
+    });
+    _sb.auth.onAuthStateChange(function(e,s){
+      if(e==='PASSWORD_RECOVERY'){showResetForm();return;}
+      if(s&&s.user) onSignedIn(s.user);
+    });
+    var p=new URLSearchParams(window.location.search);
+    if(p.get('success')||p.get('session_id')){
+      var plan=localStorage.getItem('ns_pending_plan')||'scholar';
+      _sb.auth.getSession().then(function(r){
+        if(!r.data||!r.data.session)return;
+        _sb.auth.updateUser({data:{plan:plan,paid:true}});
+        localStorage.removeItem('ns_pending_plan');
+        history.replaceState(null,'',window.location.pathname);
+        toast('\u2713 '+plan.charAt(0).toUpperCase()+plan.slice(1)+' plan activated!');
+      });
+    }
+  });
+
+  window.onSignedIn=function(user){
+    _user=user;
+    var name='User';
+    try{
+      if(user.user_metadata&&user.user_metadata.full_name&&user.user_metadata.full_name.trim())
+        name=user.user_metadata.full_name.trim().split(' ')[0];
+      else if(user.email) name=user.email.split('@')[0];
+    }catch(e){}
+
+    // Hide auth wall completely
+    var w=document.getElementById('authWall');
+    if(w){ w.style.display='none'; w.style.visibility='hidden'; }
+
+    // Show user in nav pill
+    var pill=document.getElementById('userPill');
+    if(pill){ pill.textContent=name; pill.style.display='inline-flex'; pill.style.visibility='visible'; }
+
+    // Swap nav buttons
+    var sib=document.getElementById('signInBtn');
+    if(sib){ sib.style.display='none'; sib.style.visibility='hidden'; }
+    var mfab=document.getElementById('mfaNavBtn');
+    if(mfab){ mfab.style.display='inline-block'; }
+
+    updateTrialNav(parseInt(localStorage.getItem('ns_used')||'0',10));
+    toast('✓ Welcome back, '+name+'!');
+
+    // Ensure workspace renders
+    var wb=document.getElementById('wsBody');
+    if(wb&&!wb.querySelector('.panel')) renderTool(_tool||'notes', _sub||'from-text');
+  };
+  window.authTab=function(tab){
+    var fi=document.getElementById('formIn'),fu=document.getElementById('formUp');
+    var ti=document.getElementById('tabIn'),tu=document.getElementById('tabUp');
+    var hl=document.getElementById('authHighlights');
+    var isIn=tab==='in';
+    if(fi)fi.style.display=isIn?'block':'none';
+    if(fu)fu.style.display=isIn?'none':'block';
+    if(hl)hl.style.display=isIn?'none':'block';
+    if(ti)ti.className='auth-tab'+(isIn?' active':'');
+    if(tu)tu.className='auth-tab'+(isIn?'':' active');
+    authErr('errIn','');authErr('errUp','');
+  };
+  window.showAuth=function(tab){var w=document.getElementById('authWall');if(w)w.style.display='flex';authTab(tab||'up');};
+  window.closeAuth=function(){var w=document.getElementById('authWall');if(w)w.style.display='none';};
+  function authErr(id,msg){var e=document.getElementById(id);if(e){e.textContent=msg;e.style.display=msg?'block':'none';}}
+  function aBtn(id,on){var b=document.getElementById(id);if(!b)return;b.disabled=on;b.style.opacity=on?'.5':'1';
+    var lbl={btnIn:'Sign In \u2192',btnUp:'Create Free Account \u2192'};
+    var ld={btnIn:'Signing in\u2026',btnUp:'Creating account\u2026'};
+    b.textContent=on?(ld[id]||'Loading\u2026'):(lbl[id]||b.textContent);}
+  window.doSignIn=async function(){
+    authErr('errIn','');
+    var email=(document.getElementById('emailIn')||{}).value.trim()||'';
+    var pass=(document.getElementById('passIn')||{}).value||'';
+    if(!email.includes('@')){authErr('errIn','Enter a valid email');return;}
+    if(!pass){authErr('errIn','Enter your password');return;}
+    aBtn('btnIn',true);
+    var r=await _sb.auth.signInWithPassword({email,password:pass});
+    aBtn('btnIn',false);
+    if(r.error){authErr('errIn',r.error.message.includes('Invalid')?'Incorrect email or password.':r.error.message);return;}
+    nxMFACheck(r.data.session,function(){closeAuth();onSignedIn(r.data.user);});
+  };
+  window.doSignUp=async function(){
+    authErr('errUp','');
+    var consent=document.getElementById('consentChk');
+    if(consent&&!consent.checked){
+      var row=document.getElementById('consentRow');
+      if(row){row.style.borderColor='rgba(255,92,92,.5)';row.style.background='rgba(255,80,80,.06)';
+        setTimeout(function(){row.style.borderColor='var(--b2)';row.style.background='var(--a2)';},2500);}
+      authErr('errUp','Please agree to the Terms of Service to continue.');return;
+    }
+    var name=(document.getElementById('nameUp')||{}).value.trim()||'';
+    var email=(document.getElementById('emailUp')||{}).value.trim()||'';
+    var pass=(document.getElementById('passUp')||{}).value||'';
+    if(!name){authErr('errUp','Enter your full name');return;}
+    if(!email.includes('@')){authErr('errUp','Enter a valid email');return;}
+    if(pass.length<6){authErr('errUp','Password must be at least 6 characters');return;}
+    aBtn('btnUp',true);
+    var r=await _sb.auth.signUp({email,password:pass,options:{data:{full_name:name},emailRedirectTo:window.location.href}});
+    aBtn('btnUp',false);
+    if(r.error){
+      var msg=r.error.message;
+      if(msg.includes('rate limit')||msg.includes('sending')){authErr('errUp','\u26A0 Email rate limit \u2014 try signing in.');setTimeout(function(){authTab('in');},2000);return;}
+      if(msg.includes('already')||msg.includes('registered')){authErr('errUp','Account exists \u2014 please sign in.');setTimeout(function(){authTab('in');},1500);return;}
+      authErr('errUp',msg);return;
+    }
+    closeAuth();
+    toast('Account created! Check your email to verify, then sign in.');
+  };
+  window.forgotPw=async function(){
+    var email=(document.getElementById('emailIn')||{}).value.trim()||'';
+    if(!email.includes('@')){authErr('errIn','Enter your email first');return;}
+    var r=await _sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href+'?reset=1'});
+    if(r.error){authErr('errIn',r.error.message);return;}
+    toast('\u2713 Reset link sent to your email!');
+  };
+  window.showResetForm=function(){
+    var w=document.getElementById('authWall');if(w)w.style.display='flex';
+    ['formIn','formUp'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+    var fr=document.getElementById('formReset');if(fr)fr.style.display='block';
+  };
+  window.updatePw=async function(){
+    var pass=(document.getElementById('newPass')||{}).value||'';
+    if(pass.length<6){toast('Password must be at least 6 characters');return;}
+    var r=await _sb.auth.updateUser({password:pass});
+    if(r.error){toast('Error: '+r.error.message);return;}
+    toast('\u2713 Password updated!');
+    history.replaceState(null,'',window.location.pathname);
+    _sb.auth.getSession().then(function(res){if(res.data&&res.data.session)onSignedIn(res.data.session.user);});
+  };
+  window.signOut=async function(){
+    await _sb.auth.signOut();_user=null;
+    var pill=document.getElementById('userPill');if(pill)pill.style.display='none';
+    var sib=document.getElementById('signInBtn');if(sib)sib.style.display='inline-block';
+    var mfab=document.getElementById('mfaNavBtn');if(mfab)mfab.style.display='none';
+    showAuth('in');
+  };
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MFA MODULE                                                   -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<script>
+var _mfaFactorId=null,_mfaOnVerified=null;
+window.nxMFACheck=async function(session,onVerified){
+  try{
+    var r=await _sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    if(r.data&&r.data.nextLevel==='aal2'&&r.data.currentLevel!=='aal2'){
+      var factors=await _sb.auth.mfa.listFactors();
+      var totp=factors.data&&factors.data.totp&&factors.data.totp[0];
+      if(totp){_mfaFactorId=totp.id;_mfaOnVerified=onVerified;document.getElementById('nxMFAWall').style.display='flex';document.getElementById('nxMFACode').focus();return;}
+    }
+    onVerified();
+  }catch(e){onVerified();}
+};
+window.nxMFAVerify=async function(){
+  var code=document.getElementById('nxMFACode').value.trim();
+  var err=document.getElementById('nxMFAErr');err.style.display='none';
+  if(!/^\d{6}$/.test(code)){err.textContent='Enter a valid 6-digit code';err.style.display='block';return;}
+  var btn=document.getElementById('nxMFAVerifyBtn');btn.disabled=true;btn.textContent='Verifying\u2026';
+  try{
+    var ch=await _sb.auth.mfa.challenge({factorId:_mfaFactorId});if(ch.error)throw ch.error;
+    var vr=await _sb.auth.mfa.verify({factorId:_mfaFactorId,challengeId:ch.data.id,code});if(vr.error)throw vr.error;
+    document.getElementById('nxMFAWall').style.display='none';document.getElementById('nxMFACode').value='';
+    if(_mfaOnVerified)_mfaOnVerified();
+  }catch(e){err.textContent=e.message||'Invalid code';err.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Verify \u2192';}
+};
+window.nxMFACancel=async function(){document.getElementById('nxMFAWall').style.display='none';await _sb.auth.signOut();window.location.reload();};
+window.nxMFALoadStatus=async function(){
+  document.getElementById('nxMFAStatusLoading').style.display='block';
+  document.getElementById('nxMFAOffView').style.display='none';
+  document.getElementById('nxMFAOnView').style.display='none';
+  document.getElementById('nxMFAEnrollView').style.display='none';
+  document.getElementById('nxMFAStatusView').style.display='block';
+  try{
+    var factors=await _sb.auth.mfa.listFactors();
+    var totp=factors.data&&factors.data.totp&&factors.data.totp.find(function(f){return f.status==='verified';});
+    document.getElementById('nxMFAStatusLoading').style.display='none';
+    if(totp){document.getElementById('nxMFAOnView').style.display='block';}
+    else{document.getElementById('nxMFAOffView').style.display='block';}
+  }catch(e){document.getElementById('nxMFAStatusLoading').style.display='none';document.getElementById('nxMFAOffView').style.display='block';}
+};
+window.nxMFAStartEnroll=async function(){
+  try{
+    var r=await _sb.auth.mfa.enroll({factorType:'totp'});if(r.error)throw r.error;
+    _mfaFactorId=r.data.id;
+    document.getElementById('nxMFAStatusView').style.display='none';
+    document.getElementById('nxMFAEnrollView').style.display='block';
+    var qrBox = document.getElementById('nxMFAQRBox');
+    var qrData = r.data.totp.qr_code;
+    // Convert SVG data URI to PNG via canvas so any authenticator app can scan it
+    if(qrData.indexOf('svg') !== -1){
+      var img = new Image();
+      img.onload = function(){
+        var canvas = document.createElement('canvas');
+        canvas.width = 200; canvas.height = 200;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 200, 200);
+        ctx.drawImage(img, 0, 0, 200, 200);
+        qrBox.innerHTML = '';
+        canvas.style.cssText = 'width:180px;height:180px;border-radius:8px;display:block';
+        qrBox.appendChild(canvas);
+      };
+      img.onerror = function(){
+        // Fallback: render SVG directly
+        qrBox.innerHTML = '<img src="'+qrData+'" style="width:180px;height:180px;border-radius:8px;"/>';
+      };
+      img.src = qrData;
+    } else {
+      qrBox.innerHTML = '<img src="'+qrData+'" style="width:180px;height:180px;border-radius:8px;"/>';
+    }
+    document.getElementById('nxMFASecret').textContent=r.data.totp.secret;
+  }catch(e){toast('MFA enroll error: '+e.message);}
+};
+window.nxMFAConfirmEnroll=async function(){
+  var code=document.getElementById('nxMFAEnrollCode').value.trim();
+  var err=document.getElementById('nxMFAEnrollErr');err.style.display='none';
+  if(!/^\d{6}$/.test(code)){err.textContent='Enter a valid 6-digit code';err.style.display='block';return;}
+  try{
+    var ch=await _sb.auth.mfa.challenge({factorId:_mfaFactorId});if(ch.error)throw ch.error;
+    var vr=await _sb.auth.mfa.verify({factorId:_mfaFactorId,challengeId:ch.data.id,code});if(vr.error)throw vr.error;
+    toast('\u2713 MFA enabled');document.getElementById('nxMFAEnrollCode').value='';nxMFALoadStatus();
+  }catch(e){err.textContent=e.message||'Invalid code';err.style.display='block';}
+};
+window.nxMFADisable=async function(){
+  try{
+    var factors=await _sb.auth.mfa.listFactors();
+    var totp=factors.data&&factors.data.totp&&factors.data.totp[0];
+    if(totp){await _sb.auth.mfa.unenroll({factorId:totp.id});toast('MFA disabled');nxMFALoadStatus();}
+  }catch(e){toast('Error: '+e.message);}
+};
+</script>
+
+</body>
+</html>
