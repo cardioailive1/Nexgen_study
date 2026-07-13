@@ -1,21 +1,14 @@
 version: "1"
 
-# ══════════════════════════════════════════════════════════════════
-# NexGen Study — Render.com Deployment Configuration
-# Corverxis Technologies Ltd
-# ══════════════════════════════════════════════════════════════════
-
 services:
-
-  # ── Web Service (Node.js API + Static Frontend) ──────────────────
   - type: web
     name: nexgen-study
     runtime: node
-    region: oregon           # Change to: ohio | frankfurt | singapore as needed
-    plan: starter            # starter ($7/mo) | standard ($25/mo) | pro ($85/mo)  [web service plans unchanged]
+    region: oregon
+    plan: starter
     branch: main
     rootDir: .
-    buildCommand: npm install && npm run prisma:generate && npm run prisma:migrate
+    buildCommand: npm install --omit=dev && npx prisma generate --schema=prisma/schema.prisma && npx prisma migrate deploy --schema=prisma/schema.prisma
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
@@ -25,19 +18,10 @@ services:
         value: production
       - key: PORT
         value: 3000
-      - key: APP_URL
-        fromService:
-          type: web
-          name: nexgen-study
-          property: host
-
-      # Database — from Render PostgreSQL below
       - key: DATABASE_URL
         fromDatabase:
           name: nexgen-study-db
           property: connectionString
-
-      # Secrets — set manually in Render dashboard
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
@@ -46,16 +30,12 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
-
-      # Anthropic
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_MODEL_SONNET
         value: claude-sonnet-4-6
       - key: ANTHROPIC_MODEL_HAIKU
         value: claude-haiku-4-5-20251001
-
-      # Stripe
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PUBLISHABLE_KEY
@@ -70,26 +50,24 @@ services:
         value: https://buy.stripe.com/14A9AT9p83rfbDddjI1oI0k
       - key: STRIPE_RESEARCHER_LINK
         value: https://buy.stripe.com/dRm7sL7h09PDePpa7w1oI0l
-
-      # Supabase
       - key: SUPABASE_URL
         value: https://bvwgqafekmfqpylsrteu.supabase.co
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-
-      # OAuth2
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: https://nexgen-study.onrender.com/api/auth/google/callback
       - key: MICROSOFT_CLIENT_ID
         sync: false
       - key: MICROSOFT_CLIENT_SECRET
         sync: false
-
-      # Email
+      - key: MICROSOFT_CALLBACK_URL
+        value: https://nexgen-study.onrender.com/api/auth/microsoft/callback
       - key: SMTP_HOST
         value: smtp.resend.com
       - key: SMTP_PORT
@@ -102,32 +80,25 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: "NexGen Study <support@corverxis.com>"
-
-      # Rate limits
+      - key: CORS_ORIGINS
+        value: https://nexgen-study.onrender.com
       - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX
-        value: 100
+        value: 500
       - key: RATE_LIMIT_AI_MAX
         value: 20
       - key: BCRYPT_ROUNDS
         value: 12
-
-      # CORS
-      - key: CORS_ORIGINS
-        sync: false  # set to your domain(s) in Render dashboard
-
-      # Compliance
       - key: DEFAULT_DATA_RETENTION_DAYS
         value: 365
       - key: TRIAL_EXPIRY_DAYS
         value: 7
 
-  # ── PostgreSQL Database ──────────────────────────────────────────
 databases:
   - name: nexgen-study-db
     databaseName: nexgen_study
     user: nexgen_study_user
     region: oregon
-    plan: free              # free | basic ($7/mo) | standard ($20/mo) | pro ($65/mo)
-    ipAllowList: []         # empty = allow only Render internal network
+    plan: basic
+    ipAllowList: []
