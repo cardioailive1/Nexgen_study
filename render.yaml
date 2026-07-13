@@ -12,7 +12,7 @@ services:
     name: nexgen-study
     runtime: node
     region: oregon           # Change to: ohio | frankfurt | singapore as needed
-    plan: starter            # starter ($7/mo) | standard ($25/mo) | pro ($85/mo)
+    plan: starter            # starter ($7/mo) | standard ($25/mo) | pro ($85/mo)  [web service plans unchanged]
     branch: main
     rootDir: .
     buildCommand: npm install && npm run prisma:generate && npm run prisma:migrate
@@ -129,5 +129,5 @@ databases:
     databaseName: nexgen_study
     user: nexgen_study_user
     region: oregon
-    plan: starter           # starter (free) | standard ($20/mo) | pro ($65/mo)
+    plan: free              # free | basic ($7/mo) | standard ($20/mo) | pro ($65/mo)
     ipAllowList: []         # empty = allow only Render internal network
