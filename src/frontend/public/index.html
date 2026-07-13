@@ -1461,94 +1461,71 @@ function handleUpload(input, targetId){
   window.doSignUp=async function(){
     authErr('errUp','');
 
-    // Consent check
+    // Consent
     var consent=document.getElementById('consentChk');
     if(consent&&!consent.checked){
       var row=document.getElementById('consentRow');
       if(row){row.style.borderColor='rgba(255,92,92,.5)';row.style.background='rgba(255,80,80,.06)';
         setTimeout(function(){row.style.borderColor='var(--b2)';row.style.background='var(--a2)';},2500);}
-      authErr('errUp','Please agree to the Terms of Service to continue.');return;
+      authErr('errUp','Please agree to the Terms of Service to continue.');
+      return;
     }
 
-    // Collect fields
     var name=(document.getElementById('nameUp')||{}).value.trim()||'';
     var email=(document.getElementById('emailUp')||{}).value.trim()||'';
     var pass=(document.getElementById('passUp')||{}).value||'';
 
-    // Validate
     if(!name){authErr('errUp','Please enter your full name.');return;}
-    if(!email||!email.includes('@')||!email.includes('.')){authErr('errUp','Please enter a valid email address.');return;}
+    if(!email||!email.includes('@')){authErr('errUp','Please enter a valid email address.');return;}
     if(pass.length<6){authErr('errUp','Password must be at least 6 characters.');return;}
 
-    // Disable button + show loading
     var btn=document.getElementById('btnUp');
     if(btn){btn.disabled=true;btn.textContent='Creating account…';}
 
+    function resetBtn(){if(btn){btn.disabled=false;btn.textContent='Create Free Account →';}}
+
+    // Use Supabase directly — most reliable path
     try{
-      // Try backend API first (production)
-      var apiUrl='/api/auth/register';
-      var apiRes=await fetch(apiUrl,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({fullName:name,email:email,password:pass,termsAccepted:'true'})
+      var r=await _sb.auth.signUp({
+        email:email,
+        password:pass,
+        options:{data:{full_name:name},emailRedirectTo:window.location.origin+'/'}
       });
 
-      if(apiRes.ok){
-        closeAuth();
-        toast('✓ Account created! Check your email to verify, then sign in.');
-        authTab('in');
+      resetBtn();
+
+      if(r.error){
+        var msg=r.error.message||'Something went wrong.';
+        if(msg.toLowerCase().includes('already registered')||msg.toLowerCase().includes('already been registered')){
+          authErr('errUp','An account with this email already exists.');
+          authTab('in');
+          return;
+        }
+        if(msg.toLowerCase().includes('rate')||msg.toLowerCase().includes('email')){
+          authErr('errUp','⚠️ Email rate limit hit. Your account may already exist — try signing in.');
+          setTimeout(function(){authTab('in');},3000);
+          return;
+        }
+        authErr('errUp',msg);
         return;
       }
 
-      // Parse API error
-      var apiData=await apiRes.json();
-      if(apiRes.status===409){
+      // Supabase success
+      // Check if user needs email confirmation
+      if(r.data&&r.data.user&&r.data.user.identities&&r.data.user.identities.length===0){
         authErr('errUp','An account with this email already exists. Please sign in.');
         authTab('in');
         return;
       }
-      if(apiData.errors&&apiData.errors.length){
-        authErr('errUp',apiData.errors[0].msg||'Please check your details and try again.');
-        return;
-      }
-      if(apiData.error){
-        authErr('errUp',apiData.error);
-        return;
-      }
 
-    } catch(fetchErr){
-      // Fallback: Supabase direct (dev / standalone mode)
-      try{
-        var r=await _sb.auth.signUp({
-          email:email,
-          password:pass,
-          options:{data:{full_name:name},emailRedirectTo:window.location.origin+'/'}
-        });
-        if(r.error){
-          var msg=r.error.message||'Something went wrong. Please try again.';
-          if(msg.toLowerCase().includes('rate limit')||msg.toLowerCase().includes('sending')){
-            authErr('errUp','⚠ Email sending limit reached. Account may have been created — try signing in.');
-            setTimeout(function(){authTab('in');},3000);
-            return;
-          }
-          if(msg.toLowerCase().includes('already')||msg.toLowerCase().includes('registered')){
-            authErr('errUp','An account with this email already exists. Please sign in.');
-            setTimeout(function(){authTab('in');},1500);
-            return;
-          }
-          authErr('errUp',msg);
-          return;
-        }
-        closeAuth();
-        toast('✓ Account created! Check your email to verify, then sign in.');
-        authTab('in');
-        return;
-      } catch(sbErr){
-        authErr('errUp','Connection error. Please check your internet and try again.');
-      }
-    } finally{
-      // Always re-enable button
-      if(btn){btn.disabled=false;btn.textContent='Create Free Account →';}
+      closeAuth();
+      document.getElementById('wsBody').style.display='';
+      toast('✓ Account created! Check your email to verify, then sign in.');
+      authTab('in');
+
+    } catch(err){
+      resetBtn();
+      authErr('errUp','Connection error: '+((err&&err.message)||'Please try again.'));
     }
   };
   window.forgotPw=async function(){
