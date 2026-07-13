@@ -1,0 +1,243 @@
+// ══════════════════════════════════════════════════════════════════
+// NexGen Study — Prisma Schema
+// Corverxis Technologies Ltd
+// Governing Law: State of Delaware, United States
+// ══════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── USERS ─────────────────────────────────────────────────────────
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  passwordHash      String?   // null for OAuth-only accounts
+  fullName          String
+  avatarUrl         String?
+
+  // Plan & subscription
+  plan              Plan      @default(TRIAL)
+  trialStartedAt    DateTime  @default(now())
+  trialEndsAt       DateTime?
+  subscriptionId    String?   @unique
+  subscriptionStatus SubscriptionStatus @default(INACTIVE)
+  stripeCustomerId  String?   @unique
+
+  // OAuth
+  oauthProvider     OAuthProvider?
+  oauthProviderId   String?
+
+  // MFA
+  mfaEnabled        Boolean   @default(false)
+  mfaSecret         String?   // encrypted TOTP secret
+  mfaBackupCodes    String[]  // encrypted backup codes
+
+  // Usage tracking
+  dailyUsageCount   Int       @default(0)
+  dailyUsageReset   DateTime  @default(now())
+  totalGenerations  Int       @default(0)
+
+  // Compliance & consent
+  termsAcceptedAt   DateTime?
+  privacyAcceptedAt DateTime?
+  marketingConsent  Boolean   @default(false)
+  dataRetentionDays Int       @default(365)
+
+  // Security
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  loginAttempts     Int       @default(0)
+  lockedUntil       DateTime?
+  sessionTokenHash  String?
+
+  // Soft delete (GDPR right to erasure — mark deleted, purge on schedule)
+  deletedAt         DateTime?
+  deletionRequestedAt DateTime?
+
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  sessions          Session[]
+  generations       Generation[]
+  auditLogs         AuditLog[]
+  subscriptions     Subscription[]
+  dataExports       DataExport[]
+
+  @@index([email])
+  @@index([stripeCustomerId])
+  @@index([oauthProvider, oauthProviderId])
+  @@index([deletedAt])
+}
+
+// ── SESSIONS ──────────────────────────────────────────────────────
+model Session {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String   @unique
+  ipAddress   String?
+  userAgent   String?
+  mfaVerified Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+// ── AI GENERATIONS ────────────────────────────────────────────────
+model Generation {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tool metadata
+  tool         String   // 'notes', 'essay', 'lecture', 'research', 'slides', 'flash', 'cite', 'stem', 'notebook'
+  subTool      String   // 'from-text', 'academic', 'explain', etc.
+  model        String   // 'claude-sonnet-4-6' or 'claude-haiku-4-5-20251001'
+
+  // Token usage (for cost tracking & SOC 2)
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float
+
+  // Content — stored encrypted, purged per retention policy
+  promptHash   String?  // SHA-256 of prompt (for dedup, not content)
+  outputSize   Int      // byte size only, content not stored by default
+
+  // Status
+  status       GenerationStatus @default(COMPLETED)
+  errorMessage String?
+  durationMs   Int?
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([tool])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+// ── SUBSCRIPTIONS ─────────────────────────────────────────────────
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubscriptionId String   @unique
+  stripePriceId        String
+  plan                 Plan
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean  @default(false)
+  canceledAt           DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+}
+
+// ── AUDIT LOG (SOC 2 Type II requirement) ─────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String   // 'USER_LOGIN', 'GENERATION_CREATED', 'PLAN_UPGRADED', etc.
+  resource   String?  // resource type affected
+  resourceId String?  // resource id affected
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?    // additional context
+  severity   AuditSeverity @default(INFO)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([severity])
+}
+
+// ── DATA EXPORT REQUESTS (GDPR Article 20) ────────────────────────
+model DataExport {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      ExportStatus @default(PENDING)
+  downloadUrl String?
+  expiresAt   DateTime?
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+}
+
+// ── WEBHOOK EVENTS (Stripe idempotency) ───────────────────────────
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  stripeEventId String  @unique
+  type         String
+  processed    Boolean  @default(false)
+  processedAt  DateTime?
+  payload      Json
+  createdAt    DateTime @default(now())
+
+  @@index([stripeEventId])
+  @@index([processed])
+}
+
+// ── ENUMS ─────────────────────────────────────────────────────────
+enum Plan {
+  TRIAL
+  SCHOLAR
+  RESEARCHER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  PAUSED
+}
+
+enum OAuthProvider {
+  GOOGLE
+  MICROSOFT
+  GITHUB
+}
+
+enum GenerationStatus {
+  COMPLETED
+  FAILED
+  RATE_LIMITED
+}
+
+enum AuditSeverity {
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  READY
+  EXPIRED
+  FAILED
+}
