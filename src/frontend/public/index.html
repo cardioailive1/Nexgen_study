@@ -1431,14 +1431,37 @@ function handleUpload(input, targetId){
     var pass=(document.getElementById('passIn')||{}).value||'';
     if(!email.includes('@')){authErr('errIn','Enter a valid email');return;}
     if(!pass){authErr('errIn','Enter your password');return;}
-    aBtn('btnIn',true);
-    var r=await _sb.auth.signInWithPassword({email,password:pass});
-    aBtn('btnIn',false);
-    if(r.error){authErr('errIn',r.error.message.includes('Invalid')?'Incorrect email or password.':r.error.message);return;}
-    nxMFACheck(r.data.session,function(){closeAuth();onSignedIn(r.data.user);});
+    var btnIn=document.getElementById('btnIn');
+    if(btnIn){btnIn.disabled=true;btnIn.textContent='Signing in…';}
+    try{
+      // Try backend login first
+      var loginRes=await fetch('/api/auth/login',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body:JSON.stringify({email:email,password:pass})
+      });
+      var loginData=await loginRes.json();
+      if(loginRes.ok){
+        closeAuth();
+        onSignedIn(loginData.user||{email:email,user_metadata:{full_name:''}});
+        return;
+      }
+      if(loginData.error){authErr('errIn',loginData.error);return;}
+    }catch(e){
+      // Fallback: Supabase direct
+      var r=await _sb.auth.signInWithPassword({email:email,password:pass});
+      if(r.error){authErr('errIn',r.error.message.includes('Invalid')?'Incorrect email or password.':r.error.message);return;}
+      nxMFACheck(r.data.session,function(){closeAuth();onSignedIn(r.data.user);});
+      return;
+    } finally{
+      if(btnIn){btnIn.disabled=false;btnIn.textContent='Sign In →';}
+    }
   };
   window.doSignUp=async function(){
     authErr('errUp','');
+
+    // Consent check
     var consent=document.getElementById('consentChk');
     if(consent&&!consent.checked){
       var row=document.getElementById('consentRow');
@@ -1446,23 +1469,87 @@ function handleUpload(input, targetId){
         setTimeout(function(){row.style.borderColor='var(--b2)';row.style.background='var(--a2)';},2500);}
       authErr('errUp','Please agree to the Terms of Service to continue.');return;
     }
+
+    // Collect fields
     var name=(document.getElementById('nameUp')||{}).value.trim()||'';
     var email=(document.getElementById('emailUp')||{}).value.trim()||'';
     var pass=(document.getElementById('passUp')||{}).value||'';
-    if(!name){authErr('errUp','Enter your full name');return;}
-    if(!email.includes('@')){authErr('errUp','Enter a valid email');return;}
-    if(pass.length<6){authErr('errUp','Password must be at least 6 characters');return;}
-    aBtn('btnUp',true);
-    var r=await _sb.auth.signUp({email,password:pass,options:{data:{full_name:name},emailRedirectTo:window.location.href}});
-    aBtn('btnUp',false);
-    if(r.error){
-      var msg=r.error.message;
-      if(msg.includes('rate limit')||msg.includes('sending')){authErr('errUp','\u26A0 Email rate limit \u2014 try signing in.');setTimeout(function(){authTab('in');},2000);return;}
-      if(msg.includes('already')||msg.includes('registered')){authErr('errUp','Account exists \u2014 please sign in.');setTimeout(function(){authTab('in');},1500);return;}
-      authErr('errUp',msg);return;
+
+    // Validate
+    if(!name){authErr('errUp','Please enter your full name.');return;}
+    if(!email||!email.includes('@')||!email.includes('.')){authErr('errUp','Please enter a valid email address.');return;}
+    if(pass.length<6){authErr('errUp','Password must be at least 6 characters.');return;}
+
+    // Disable button + show loading
+    var btn=document.getElementById('btnUp');
+    if(btn){btn.disabled=true;btn.textContent='Creating account…';}
+
+    try{
+      // Try backend API first (production)
+      var apiUrl='/api/auth/register';
+      var apiRes=await fetch(apiUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fullName:name,email:email,password:pass,termsAccepted:'true'})
+      });
+
+      if(apiRes.ok){
+        closeAuth();
+        toast('✓ Account created! Check your email to verify, then sign in.');
+        authTab('in');
+        return;
+      }
+
+      // Parse API error
+      var apiData=await apiRes.json();
+      if(apiRes.status===409){
+        authErr('errUp','An account with this email already exists. Please sign in.');
+        authTab('in');
+        return;
+      }
+      if(apiData.errors&&apiData.errors.length){
+        authErr('errUp',apiData.errors[0].msg||'Please check your details and try again.');
+        return;
+      }
+      if(apiData.error){
+        authErr('errUp',apiData.error);
+        return;
+      }
+
+    } catch(fetchErr){
+      // Fallback: Supabase direct (dev / standalone mode)
+      try{
+        var r=await _sb.auth.signUp({
+          email:email,
+          password:pass,
+          options:{data:{full_name:name},emailRedirectTo:window.location.origin+'/'}
+        });
+        if(r.error){
+          var msg=r.error.message||'Something went wrong. Please try again.';
+          if(msg.toLowerCase().includes('rate limit')||msg.toLowerCase().includes('sending')){
+            authErr('errUp','⚠ Email sending limit reached. Account may have been created — try signing in.');
+            setTimeout(function(){authTab('in');},3000);
+            return;
+          }
+          if(msg.toLowerCase().includes('already')||msg.toLowerCase().includes('registered')){
+            authErr('errUp','An account with this email already exists. Please sign in.');
+            setTimeout(function(){authTab('in');},1500);
+            return;
+          }
+          authErr('errUp',msg);
+          return;
+        }
+        closeAuth();
+        toast('✓ Account created! Check your email to verify, then sign in.');
+        authTab('in');
+        return;
+      } catch(sbErr){
+        authErr('errUp','Connection error. Please check your internet and try again.');
+      }
+    } finally{
+      // Always re-enable button
+      if(btn){btn.disabled=false;btn.textContent='Create Free Account →';}
     }
-    closeAuth();
-    toast('Account created! Check your email to verify, then sign in.');
   };
   window.forgotPw=async function(){
     var email=(document.getElementById('emailIn')||{}).value.trim()||'';
