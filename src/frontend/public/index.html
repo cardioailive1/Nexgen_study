@@ -179,8 +179,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <span id="trialNav" style="font-family:var(--mono);font-size:8.5px;padding:3px 9px;border-radius:10px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);display:none"></span>
     <button class="nav-btn" onclick="document.getElementById('upgradeWall').classList.add('on')">&#x1F4B3; Upgrade</button>
     <button id="mfaNavBtn" onclick="document.getElementById('nxMFASettings').style.display='flex';nxMFALoadStatus();" style="display:none;padding:5px 10px;background:transparent;border:1px solid var(--b2);color:var(--accent);border-radius:6px;font-family:var(--mono);font-size:9px;cursor:pointer">&#x1F512;</button>
-    <button id="signInBtn" onclick="showAuth('up')" class="nav-btn primary">Free Sign Up</button>
-    <button id="userPill"  onclick="signOut()" style="display:none;padding:5px 12px;background:transparent;border:1px solid var(--b2);color:var(--accent);border-radius:6px;font-family:var(--mono);font-size:9px;cursor:pointer" title="Sign out"></button>
+    <button id="signInBtn" onclick="window.showAuth('up')" class="nav-btn primary">Free Sign Up</button>
+    <button id="userPill"  onclick="window.signOut()" style="display:none;padding:5px 12px;background:transparent;border:1px solid var(--b2);color:var(--accent);border-radius:6px;font-family:var(--mono);font-size:9px;cursor:pointer" title="Sign out"></button>
   </div>
 </div>
 
@@ -333,8 +333,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <!-- Right: form -->
     <div style="background:var(--panel);border:1px solid var(--b3);border-radius:14px;padding:26px;width:100%;max-width:370px;flex-shrink:0">
       <div style="display:flex;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:16px;border:1px solid var(--b)">
-        <button id="tabIn" class="auth-tab" onclick="authTab('in')">SIGN IN</button>
-        <button id="tabUp" class="auth-tab active" onclick="authTab('up')">FREE SIGN UP</button>
+        <button id="tabIn" class="auth-tab" onclick="window.authTab('in')">SIGN IN</button>
+        <button id="tabUp" class="auth-tab active" onclick="window.authTab('up')">FREE SIGN UP</button>
       </div>
 
       <div id="errIn" style="display:none;font-family:var(--mono);font-size:10px;color:var(--red);background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.2);border-radius:6px;padding:8px 12px;margin-bottom:10px"></div>
@@ -345,11 +345,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         <input id="emailIn" type="email" class="auth-input" placeholder="you@university.edu"/>
         <div class="auth-label">Password</div>
         <input id="passIn" type="password" class="auth-input" placeholder="Your password"/>
-        <button id="btnIn" onclick="doSignIn()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#x2192;</button>
+        <button id="btnIn" onclick="window.doSignIn()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#x2192;</button>
         <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">
-          <span onclick="forgotPw()" style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px">Forgot password?</span>
+          <span onclick="window.forgotPw()" style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px">Forgot password?</span>
           &nbsp;&middot;&nbsp;
-          <span onclick="authTab('up')" style="color:var(--accent);cursor:pointer">Create account</span>
+          <span onclick="window.authTab('up')" style="color:var(--accent);cursor:pointer">Create account</span>
         </div>
       </div>
 
@@ -364,15 +364,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
           <input type="checkbox" id="consentChk" style="margin-top:2px;accent-color:var(--accent);width:13px;height:13px;flex-shrink:0;cursor:pointer"/>
           <label for="consentChk" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.6;cursor:pointer">I agree to the <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Privacy Policy</span> and <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Terms of Service</span></label>
         </div>
-        <button id="btnUp" onclick="doSignUp()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
+        <button id="btnUp" onclick="window.doSignUp()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
         <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">Scholar $29/mo &nbsp;&middot;&nbsp; Researcher $59/mo</div>
-        <div style="margin-top:8px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">Already have an account? <span onclick="authTab('in')" style="color:var(--accent);cursor:pointer">Sign in</span></div>
+        <div style="margin-top:8px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">Already have an account? <span onclick="window.authTab('in')" style="color:var(--accent);cursor:pointer">Sign in</span></div>
         <div style="margin-top:6px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">7-day trial &nbsp;&middot;&nbsp; No credit card required</div>
       </div>
 
       <div id="formReset" style="display:none">
         <input id="newPass" type="password" class="auth-input" placeholder="New password (min. 6 chars)"/>
-        <button onclick="updatePw()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Set New Password &#x2192;</button>
+        <button onclick="window.updatePw()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Set New Password &#x2192;</button>
       </div>
     </div>
   </div>
