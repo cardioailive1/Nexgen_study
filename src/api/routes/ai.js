@@ -2,8 +2,7 @@
 
 const express   = require('express');
 const Anthropic  = require('@anthropic-ai/sdk');
-const { requireAuth } = require('../middleware/requireAuth');
-const { requirePlan }  = require('../middleware/requirePlan');
+const { requireAuth, requirePlan } = require('../middleware/requireAuth');
 const { checkDailyLimit, incrementDailyUsage } = require('../services/usageService');
 const { auditLog } = require('../services/auditService');
 const { body, validationResult } = require('express-validator');
