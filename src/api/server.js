@@ -68,6 +68,9 @@ app.use(cookieParser(process.env.SESSION_SECRET));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(requestLogger);
 
+// ── Health check BEFORE rate limiter so Render pings always pass ──
+app.use('/api/health', healthRoutes);
+
 // ── Global rate limiter ───────────────────────────────────────────
 app.use('/api/', rateLimiter);
 
@@ -75,7 +78,6 @@ app.use('/api/', rateLimiter);
 app.use((req, _res, next) => { req.prisma = prisma; next(); });
 
 // ── API Routes ────────────────────────────────────────────────────
-app.use('/api/health',        healthRoutes);
 app.use('/api/auth',          authRoutes);
 app.use('/api/ai',            aiRateLimiter, aiRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
