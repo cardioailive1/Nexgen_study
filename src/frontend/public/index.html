@@ -364,7 +364,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
           <input type="checkbox" id="consentChk" style="margin-top:2px;accent-color:var(--accent);width:13px;height:13px;flex-shrink:0;cursor:pointer"/>
           <label for="consentChk" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.6;cursor:pointer">I agree to the <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Privacy Policy</span> and <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Terms of Service</span></label>
         </div>
-        <button id="btnUp" onclick="window.doSignUp()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
+        <button id="btnUp" onclick="(function(){var n=document.getElementById('nameUp').value,e=document.getElementById('emailUp').value,p=document.getElementById('passUp').value,ch=document.getElementById('consentChk');var err=document.getElementById('errUp');if(!n){err.textContent='Enter your full name.';err.style.display='block';return;}if(!e||!e.includes('@')){err.textContent='Enter a valid email.';err.style.display='block';return;}if(p.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}if(ch&&!ch.checked){err.textContent='Please agree to the Terms of Service.';err.style.display='block';return;}err.style.display='none';var btn=document.getElementById('btnUp');btn.disabled=true;btn.textContent='Creating account\u2026';_sb.auth.signUp({email:e,password:p,options:{data:{full_name:n},emailRedirectTo:window.location.origin+'/'}}).then(function(r){btn.disabled=false;btn.textContent='Create Free Account \u2192';if(r.error){var m=r.error.message||'Error.';if(m.includes('already')){err.textContent='Account exists. Please sign in.';err.style.display='block';}else{err.textContent=m;err.style.display='block';}return;}if(r.data&&r.data.user&&r.data.user.identities&&r.data.user.identities.length===0){err.textContent='Account exists. Please sign in.';err.style.display='block';return;}var w=document.getElementById('authWall');if(w)w.style.display='none';alert('\u2713 Account created! Check your email to verify.');}).catch(function(e2){btn.disabled=false;btn.textContent='Create Free Account \u2192';err.textContent='Error: '+e2.message;err.style.display='block';});})()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
         <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">Scholar $29/mo &nbsp;&middot;&nbsp; Researcher $59/mo</div>
         <div style="margin-top:8px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">Already have an account? <span onclick="window.authTab('in')" style="color:var(--accent);cursor:pointer">Sign in</span></div>
         <div style="margin-top:6px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">7-day trial &nbsp;&middot;&nbsp; No credit card required</div>
@@ -1352,211 +1352,233 @@ function handleUpload(input, targetId){
 <!-- SUPABASE AUTH MODULE                                         -->
 <!-- ══════════════════════════════════════════════════════════ -->
 <script>
-(function(){
-  'use strict';
-  document.addEventListener('DOMContentLoaded',function(){
-    _sb.auth.getSession().then(function(r){
-      if(r.data&&r.data.session) onSignedIn(r.data.session.user);
-      else showAuth('up');
-    });
-    _sb.auth.onAuthStateChange(function(e,s){
-      if(e==='PASSWORD_RECOVERY'){showResetForm();return;}
-      if(s&&s.user) onSignedIn(s.user);
-    });
-    var p=new URLSearchParams(window.location.search);
-    if(p.get('success')||p.get('session_id')){
-      var plan=localStorage.getItem('ns_pending_plan')||'scholar';
-      _sb.auth.getSession().then(function(r){
-        if(!r.data||!r.data.session)return;
-        _sb.auth.updateUser({data:{plan:plan,paid:true}});
-        localStorage.removeItem('ns_pending_plan');
-        history.replaceState(null,'',window.location.pathname);
-        toast('\u2713 '+plan.charAt(0).toUpperCase()+plan.slice(1)+' plan activated!');
-      });
+
+'use strict';
+
+// ── AUTH FUNCTIONS — global scope so onclick handlers can reach them ──
+
+function authErr(id, msg) {
+  var e = document.getElementById(id);
+  if (e) { e.textContent = msg; e.style.display = msg ? 'block' : 'none'; }
+}
+
+function aBtn(id, on) {
+  var b = document.getElementById(id);
+  if (!b) return;
+  b.disabled = on;
+  b.style.opacity = on ? '.5' : '1';
+  var lbl = { btnIn: 'Sign In \u2192', btnUp: 'Create Free Account \u2192' };
+  var ld  = { btnIn: 'Signing in\u2026', btnUp: 'Creating account\u2026' };
+  b.textContent = on ? (ld[id] || 'Loading\u2026') : (lbl[id] || b.textContent);
+}
+
+function authTab(tab) {
+  var fi = document.getElementById('formIn');
+  var fu = document.getElementById('formUp');
+  var ti = document.getElementById('tabIn');
+  var tu = document.getElementById('tabUp');
+  var hl = document.getElementById('authHighlights');
+  var isIn = tab === 'in';
+  if (fi) fi.style.display = isIn ? 'block' : 'none';
+  if (fu) fu.style.display = isIn ? 'none' : 'block';
+  if (hl) hl.style.display = isIn ? 'none' : 'block';
+  if (ti) ti.className = 'auth-tab' + (isIn ? ' active' : '');
+  if (tu) tu.className = 'auth-tab' + (isIn ? '' : ' active');
+  authErr('errIn', ''); authErr('errUp', '');
+}
+
+function showAuth(tab) {
+  var w = document.getElementById('authWall');
+  if (w) w.style.display = 'flex';
+  authTab(tab || 'up');
+}
+
+function closeAuth() {
+  var w = document.getElementById('authWall');
+  if (w) { w.style.display = 'none'; w.style.visibility = 'hidden'; }
+}
+
+function onSignedIn(user) {
+  _user = user;
+  var name = 'User';
+  try {
+    if (user.user_metadata && user.user_metadata.full_name && user.user_metadata.full_name.trim())
+      name = user.user_metadata.full_name.trim().split(' ')[0];
+    else if (user.email)
+      name = user.email.split('@')[0];
+  } catch(e) {}
+
+  var w = document.getElementById('authWall');
+  if (w) { w.style.display = 'none'; w.style.visibility = 'hidden'; }
+
+  var pill = document.getElementById('userPill');
+  if (pill) { pill.textContent = name; pill.style.display = 'inline-flex'; }
+
+  var sib = document.getElementById('signInBtn');
+  if (sib) { sib.style.display = 'none'; }
+
+  var mfab = document.getElementById('mfaNavBtn');
+  if (mfab) { mfab.style.display = 'inline-block'; }
+
+  updateTrialNav(parseInt(localStorage.getItem('ns_used') || '0', 10));
+  toast('\u2713 Welcome back, ' + name + '!');
+
+  var wb = document.getElementById('wsBody');
+  if (wb && !wb.querySelector('.panel')) renderTool(_tool || 'notes', _sub || 'from-text');
+}
+
+function doSignIn() {
+  authErr('errIn', '');
+  var email = (document.getElementById('emailIn') || {}).value.trim() || '';
+  var pass  = (document.getElementById('passIn')  || {}).value || '';
+  if (!email.includes('@')) { authErr('errIn', 'Enter a valid email.'); return; }
+  if (!pass) { authErr('errIn', 'Enter your password.'); return; }
+
+  var btnIn = document.getElementById('btnIn');
+  if (btnIn) { btnIn.disabled = true; btnIn.textContent = 'Signing in\u2026'; }
+
+  function resetIn() { if (btnIn) { btnIn.disabled = false; btnIn.textContent = 'Sign In \u2192'; } }
+
+  _sb.auth.signInWithPassword({ email: email, password: pass }).then(function(r) {
+    resetIn();
+    if (r.error) {
+      authErr('errIn', r.error.message.includes('Invalid') ? 'Incorrect email or password.' : r.error.message);
+      return;
     }
+    nxMFACheck(r.data.session, function() { closeAuth(); onSignedIn(r.data.user); });
+  }).catch(function(e) {
+    resetIn();
+    authErr('errIn', 'Connection error. Please try again.');
+  });
+}
+
+function doSignUp() {
+  authErr('errUp', '');
+
+  var consent = document.getElementById('consentChk');
+  if (consent && !consent.checked) {
+    var row = document.getElementById('consentRow');
+    if (row) {
+      row.style.borderColor = 'rgba(255,92,92,.5)';
+      row.style.background  = 'rgba(255,80,80,.06)';
+      setTimeout(function() { row.style.borderColor = 'var(--b2)'; row.style.background = 'var(--a2)'; }, 2500);
+    }
+    authErr('errUp', 'Please agree to the Terms of Service to continue.');
+    return;
+  }
+
+  var name  = (document.getElementById('nameUp')  || {}).value.trim() || '';
+  var email = (document.getElementById('emailUp') || {}).value.trim() || '';
+  var pass  = (document.getElementById('passUp')  || {}).value || '';
+
+  if (!name)  { authErr('errUp', 'Please enter your full name.'); return; }
+  if (!email || !email.includes('@')) { authErr('errUp', 'Please enter a valid email address.'); return; }
+  if (pass.length < 6) { authErr('errUp', 'Password must be at least 6 characters.'); return; }
+
+  var btn = document.getElementById('btnUp');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating account\u2026'; }
+  function resetBtn() { if (btn) { btn.disabled = false; btn.textContent = 'Create Free Account \u2192'; } }
+
+  _sb.auth.signUp({
+    email: email,
+    password: pass,
+    options: { data: { full_name: name }, emailRedirectTo: window.location.origin + '/' }
+  }).then(function(r) {
+    resetBtn();
+    if (r.error) {
+      var msg = r.error.message || 'Something went wrong.';
+      if (msg.toLowerCase().includes('already')) {
+        authErr('errUp', 'An account with this email already exists.');
+        setTimeout(function() { authTab('in'); }, 1500);
+        return;
+      }
+      if (msg.toLowerCase().includes('rate') || msg.toLowerCase().includes('email')) {
+        authErr('errUp', '\u26a0\ufe0f Email limit reached. Try signing in if you already registered.');
+        setTimeout(function() { authTab('in'); }, 3000);
+        return;
+      }
+      authErr('errUp', msg);
+      return;
+    }
+    // Duplicate account returns empty identities
+    if (r.data && r.data.user && r.data.user.identities && r.data.user.identities.length === 0) {
+      authErr('errUp', 'An account with this email already exists. Please sign in.');
+      setTimeout(function() { authTab('in'); }, 1500);
+      return;
+    }
+    closeAuth();
+    toast('\u2713 Account created! Check your email to verify, then sign in.');
+    authTab('in');
+  }).catch(function(err) {
+    resetBtn();
+    authErr('errUp', 'Connection error: ' + ((err && err.message) || 'Please try again.'));
+  });
+}
+
+function forgotPw() {
+  var email = (document.getElementById('emailIn') || {}).value.trim() || '';
+  if (!email.includes('@')) { authErr('errIn', 'Enter your email first.'); return; }
+  _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href + '?reset=1' }).then(function(r) {
+    if (r.error) { authErr('errIn', r.error.message); return; }
+    toast('\u2713 Reset link sent to your email!');
+  });
+}
+
+function showResetForm() {
+  var w = document.getElementById('authWall'); if (w) w.style.display = 'flex';
+  ['formIn','formUp'].forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  var fr = document.getElementById('formReset'); if (fr) fr.style.display = 'block';
+}
+
+function updatePw() {
+  var pass = (document.getElementById('newPass') || {}).value || '';
+  if (pass.length < 6) { toast('Password must be at least 6 characters'); return; }
+  _sb.auth.updateUser({ password: pass }).then(function(r) {
+    if (r.error) { toast('Error: ' + r.error.message); return; }
+    toast('\u2713 Password updated!');
+    history.replaceState(null, '', window.location.pathname);
+    _sb.auth.getSession().then(function(res) {
+      if (res.data && res.data.session) onSignedIn(res.data.session.user);
+    });
+  });
+}
+
+function signOut() {
+  _sb.auth.signOut().then(function() {
+    _user = null;
+    var pill = document.getElementById('userPill'); if (pill) pill.style.display = 'none';
+    var sib  = document.getElementById('signInBtn'); if (sib)  sib.style.display  = 'inline-block';
+    var mfab = document.getElementById('mfaNavBtn'); if (mfab) mfab.style.display = 'none';
+    showAuth('in');
+  });
+}
+
+// ── Init on load ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  _sb.auth.getSession().then(function(r) {
+    if (r.data && r.data.session) onSignedIn(r.data.session.user);
+    else showAuth('up');
   });
 
-  window.onSignedIn=function(user){
-    _user=user;
-    var name='User';
-    try{
-      if(user.user_metadata&&user.user_metadata.full_name&&user.user_metadata.full_name.trim())
-        name=user.user_metadata.full_name.trim().split(' ')[0];
-      else if(user.email) name=user.email.split('@')[0];
-    }catch(e){}
+  _sb.auth.onAuthStateChange(function(e, s) {
+    if (e === 'PASSWORD_RECOVERY') { showResetForm(); return; }
+    if (s && s.user) onSignedIn(s.user);
+  });
 
-    // Hide auth wall completely
-    var w=document.getElementById('authWall');
-    if(w){ w.style.display='none'; w.style.visibility='hidden'; }
+  // Stripe return
+  var p = new URLSearchParams(window.location.search);
+  if (p.get('success') || p.get('session_id')) {
+    var plan = localStorage.getItem('ns_pending_plan') || 'scholar';
+    _sb.auth.getSession().then(function(r) {
+      if (!r.data || !r.data.session) return;
+      _sb.auth.updateUser({ data: { plan: plan, paid: true } });
+      localStorage.removeItem('ns_pending_plan');
+      history.replaceState(null, '', window.location.pathname);
+      toast('\u2713 ' + plan.charAt(0).toUpperCase() + plan.slice(1) + ' plan activated!');
+    });
+  }
+});
 
-    // Show user in nav pill
-    var pill=document.getElementById('userPill');
-    if(pill){ pill.textContent=name; pill.style.display='inline-flex'; pill.style.visibility='visible'; }
-
-    // Swap nav buttons
-    var sib=document.getElementById('signInBtn');
-    if(sib){ sib.style.display='none'; sib.style.visibility='hidden'; }
-    var mfab=document.getElementById('mfaNavBtn');
-    if(mfab){ mfab.style.display='inline-block'; }
-
-    updateTrialNav(parseInt(localStorage.getItem('ns_used')||'0',10));
-    toast('✓ Welcome back, '+name+'!');
-
-    // Ensure workspace renders
-    var wb=document.getElementById('wsBody');
-    if(wb&&!wb.querySelector('.panel')) renderTool(_tool||'notes', _sub||'from-text');
-  };
-  window.authTab=function(tab){
-    var fi=document.getElementById('formIn'),fu=document.getElementById('formUp');
-    var ti=document.getElementById('tabIn'),tu=document.getElementById('tabUp');
-    var hl=document.getElementById('authHighlights');
-    var isIn=tab==='in';
-    if(fi)fi.style.display=isIn?'block':'none';
-    if(fu)fu.style.display=isIn?'none':'block';
-    if(hl)hl.style.display=isIn?'none':'block';
-    if(ti)ti.className='auth-tab'+(isIn?' active':'');
-    if(tu)tu.className='auth-tab'+(isIn?'':' active');
-    authErr('errIn','');authErr('errUp','');
-  };
-  window.showAuth=function(tab){var w=document.getElementById('authWall');if(w)w.style.display='flex';authTab(tab||'up');};
-  window.closeAuth=function(){var w=document.getElementById('authWall');if(w)w.style.display='none';};
-  function authErr(id,msg){var e=document.getElementById(id);if(e){e.textContent=msg;e.style.display=msg?'block':'none';}}
-  function aBtn(id,on){var b=document.getElementById(id);if(!b)return;b.disabled=on;b.style.opacity=on?'.5':'1';
-    var lbl={btnIn:'Sign In \u2192',btnUp:'Create Free Account \u2192'};
-    var ld={btnIn:'Signing in\u2026',btnUp:'Creating account\u2026'};
-    b.textContent=on?(ld[id]||'Loading\u2026'):(lbl[id]||b.textContent);}
-  window.doSignIn=async function(){
-    authErr('errIn','');
-    var email=(document.getElementById('emailIn')||{}).value.trim()||'';
-    var pass=(document.getElementById('passIn')||{}).value||'';
-    if(!email.includes('@')){authErr('errIn','Enter a valid email');return;}
-    if(!pass){authErr('errIn','Enter your password');return;}
-    var btnIn=document.getElementById('btnIn');
-    if(btnIn){btnIn.disabled=true;btnIn.textContent='Signing in…';}
-    try{
-      // Try backend login first
-      var loginRes=await fetch('/api/auth/login',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials:'include',
-        body:JSON.stringify({email:email,password:pass})
-      });
-      var loginData=await loginRes.json();
-      if(loginRes.ok){
-        closeAuth();
-        onSignedIn(loginData.user||{email:email,user_metadata:{full_name:''}});
-        return;
-      }
-      if(loginData.error){authErr('errIn',loginData.error);return;}
-    }catch(e){
-      // Fallback: Supabase direct
-      var r=await _sb.auth.signInWithPassword({email:email,password:pass});
-      if(r.error){authErr('errIn',r.error.message.includes('Invalid')?'Incorrect email or password.':r.error.message);return;}
-      nxMFACheck(r.data.session,function(){closeAuth();onSignedIn(r.data.user);});
-      return;
-    } finally{
-      if(btnIn){btnIn.disabled=false;btnIn.textContent='Sign In →';}
-    }
-  };
-  window.doSignUp=async function(){
-    authErr('errUp','');
-
-    // Consent
-    var consent=document.getElementById('consentChk');
-    if(consent&&!consent.checked){
-      var row=document.getElementById('consentRow');
-      if(row){row.style.borderColor='rgba(255,92,92,.5)';row.style.background='rgba(255,80,80,.06)';
-        setTimeout(function(){row.style.borderColor='var(--b2)';row.style.background='var(--a2)';},2500);}
-      authErr('errUp','Please agree to the Terms of Service to continue.');
-      return;
-    }
-
-    var name=(document.getElementById('nameUp')||{}).value.trim()||'';
-    var email=(document.getElementById('emailUp')||{}).value.trim()||'';
-    var pass=(document.getElementById('passUp')||{}).value||'';
-
-    if(!name){authErr('errUp','Please enter your full name.');return;}
-    if(!email||!email.includes('@')){authErr('errUp','Please enter a valid email address.');return;}
-    if(pass.length<6){authErr('errUp','Password must be at least 6 characters.');return;}
-
-    var btn=document.getElementById('btnUp');
-    if(btn){btn.disabled=true;btn.textContent='Creating account…';}
-
-    function resetBtn(){if(btn){btn.disabled=false;btn.textContent='Create Free Account →';}}
-
-    // Use Supabase directly — most reliable path
-    try{
-      var r=await _sb.auth.signUp({
-        email:email,
-        password:pass,
-        options:{data:{full_name:name},emailRedirectTo:window.location.origin+'/'}
-      });
-
-      resetBtn();
-
-      if(r.error){
-        var msg=r.error.message||'Something went wrong.';
-        if(msg.toLowerCase().includes('already registered')||msg.toLowerCase().includes('already been registered')){
-          authErr('errUp','An account with this email already exists.');
-          authTab('in');
-          return;
-        }
-        if(msg.toLowerCase().includes('rate')||msg.toLowerCase().includes('email')){
-          authErr('errUp','⚠️ Email rate limit hit. Your account may already exist — try signing in.');
-          setTimeout(function(){authTab('in');},3000);
-          return;
-        }
-        authErr('errUp',msg);
-        return;
-      }
-
-      // Supabase success
-      // Check if user needs email confirmation
-      if(r.data&&r.data.user&&r.data.user.identities&&r.data.user.identities.length===0){
-        authErr('errUp','An account with this email already exists. Please sign in.');
-        authTab('in');
-        return;
-      }
-
-      closeAuth();
-      document.getElementById('wsBody').style.display='';
-      toast('✓ Account created! Check your email to verify, then sign in.');
-      authTab('in');
-
-    } catch(err){
-      resetBtn();
-      authErr('errUp','Connection error: '+((err&&err.message)||'Please try again.'));
-    }
-  };
-  window.forgotPw=async function(){
-    var email=(document.getElementById('emailIn')||{}).value.trim()||'';
-    if(!email.includes('@')){authErr('errIn','Enter your email first');return;}
-    var r=await _sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href+'?reset=1'});
-    if(r.error){authErr('errIn',r.error.message);return;}
-    toast('\u2713 Reset link sent to your email!');
-  };
-  window.showResetForm=function(){
-    var w=document.getElementById('authWall');if(w)w.style.display='flex';
-    ['formIn','formUp'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
-    var fr=document.getElementById('formReset');if(fr)fr.style.display='block';
-  };
-  window.updatePw=async function(){
-    var pass=(document.getElementById('newPass')||{}).value||'';
-    if(pass.length<6){toast('Password must be at least 6 characters');return;}
-    var r=await _sb.auth.updateUser({password:pass});
-    if(r.error){toast('Error: '+r.error.message);return;}
-    toast('\u2713 Password updated!');
-    history.replaceState(null,'',window.location.pathname);
-    _sb.auth.getSession().then(function(res){if(res.data&&res.data.session)onSignedIn(res.data.session.user);});
-  };
-  window.signOut=async function(){
-    await _sb.auth.signOut();_user=null;
-    var pill=document.getElementById('userPill');if(pill)pill.style.display='none';
-    var sib=document.getElementById('signInBtn');if(sib)sib.style.display='inline-block';
-    var mfab=document.getElementById('mfaNavBtn');if(mfab)mfab.style.display='none';
-    showAuth('in');
-  };
-})();
 </script>
 
 <!-- ══════════════════════════════════════════════════════════ -->
