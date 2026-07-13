@@ -342,7 +342,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
       <div id="formIn" style="display:none">
         <div class="auth-label">Email</div>
-        <input id="emailIn" type="email" class="auth-input" placeholder="you@university.edu"/>
+        <input id="emailIn" type="email" class="auth-input" placeholder="you@email.com"/>
         <div class="auth-label">Password</div>
         <input id="passIn" type="password" class="auth-input" placeholder="Your password"/>
         <button id="btnIn" onclick="window.doSignIn()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#x2192;</button>
@@ -356,8 +356,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       <div id="formUp">
         <div class="auth-label">Full Name</div>
         <input id="nameUp" type="text" class="auth-input" placeholder="Alex Morgan"/>
-        <div class="auth-label">University / College Email</div>
-        <input id="emailUp" type="email" class="auth-input" placeholder="you@university.edu"/>
+        <div class="auth-label">Email Address</div>
+        <input id="emailUp" type="email" class="auth-input" placeholder="you@email.com"/>
         <div class="auth-label">Password</div>
         <input id="passUp" type="password" class="auth-input" placeholder="Min. 6 characters"/>
         <div id="consentRow" style="display:flex;align-items:flex-start;gap:9px;margin:10px 0 14px;padding:10px 12px;background:var(--a2);border:1px solid var(--b2);border-radius:7px">
@@ -482,9 +482,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <!-- ══════════════════════════════════════════════════════════ -->
 <!-- PRIVACY MODAL                                               -->
 <!-- ══════════════════════════════════════════════════════════ -->
-<div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(15,38,69,.95);z-index:999999;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;backdrop-filter:blur(14px)">
+<div id="privacyModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,38,69,.96);z-index:2147483647;overflow-y:auto;padding:24px 16px;backdrop-filter:blur(14px)">
   <div style="background:var(--panel);border:1px solid var(--b3);border-radius:14px;max-width:640px;width:100%;margin:auto;position:relative">
-    <button onclick="closePrivacyModal()" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:6px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-size:13px;cursor:pointer">&#x2715;</button>
+    <button onclick="(function(){var m=document.getElementById('privacyModal');if(m)m.style.display='none';document.body.style.overflow='';})()" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:6px;background:var(--a2);border:1px solid var(--b2);color:var(--accent);font-size:13px;cursor:pointer">&#x2715;</button>
     <div style="padding:32px 36px 36px">
       <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px">Legal</div>
       <h2 style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">Privacy Policy &amp; Terms of Service</h2>
@@ -527,7 +527,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         </div>
       </div>
 
-      <button onclick="closePrivacyModal()" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:20px">I Understand &mdash; Close</button>
+      <button onclick="(function(){var m=document.getElementById('privacyModal');if(m)m.style.display='none';document.body.style.overflow='';})()" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:20px">I Understand &mdash; Close</button>
     </div>
   </div>
 </div>
@@ -1245,8 +1245,18 @@ function toast(msg){
 }
 
 // ── PRIVACY MODAL ─────────────────────────────────────────────────
-function openPrivacyModal(){document.getElementById('privacyModal').style.display='flex';}
-function closePrivacyModal(){document.getElementById('privacyModal').style.display='none';}
+function openPrivacyModal(){
+  var m=document.getElementById('privacyModal');
+  if(!m) return;
+  m.style.cssText='display:block;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,38,69,.96);z-index:2147483647;overflow-y:auto;padding:24px 16px;';
+  document.body.style.overflow='hidden';
+}
+function closePrivacyModal(){
+  var m=document.getElementById('privacyModal');
+  if(!m) return;
+  m.style.display='none';
+  document.body.style.overflow='';
+}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePrivacyModal();});
 
 // ── INIT ─────────────────────────────────────────────────────────
