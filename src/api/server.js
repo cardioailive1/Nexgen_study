@@ -27,6 +27,9 @@ const { securityHeaders } = require('./middleware/securityHeaders');
 
 const app = express();
 
+// ── Trust Render's reverse proxy ──────────────────────────────────
+app.set('trust proxy', 1);
+
 // ── Prisma — lazy connection, don't block startup ─────────────────
 let prisma;
 function getPrisma() {
@@ -127,6 +130,19 @@ async function shutdown(signal) {
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
+
+// ── Run DB push on startup to ensure tables exist ────────────────
+const { execSync } = require('child_process');
+try {
+  console.log('Running prisma db push...');
+  execSync('npx prisma db push --schema=prisma/schema.prisma --accept-data-loss', {
+    stdio: 'inherit',
+    timeout: 60000
+  });
+  console.log('Database schema synced.');
+} catch (dbErr) {
+  console.error('DB push failed (tables may already exist):', dbErr.message);
+}
 
 // ── Start server immediately ──────────────────────────────────────
 const PORT = parseInt(process.env.PORT || '3000', 10);
