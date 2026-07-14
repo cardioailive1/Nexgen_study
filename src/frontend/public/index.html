@@ -343,7 +343,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         <input id="emailIn" type="email" class="auth-input" placeholder="you@email.com"/>
         <div class="auth-label">Password</div>
         <input id="passIn" type="password" class="auth-input" placeholder="Your password"/>
-        <button id="btnIn" onclick="doSignIn()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#x2192;</button>
+        <button id="btnIn" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Sign In &#x2192;</button>
         <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">
           <span onclick="forgotPw()" style="color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px">Forgot password?</span>
           &nbsp;&middot;&nbsp;
@@ -362,7 +362,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
           <input type="checkbox" id="consentChk" style="margin-top:2px;accent-color:var(--accent);width:13px;height:13px;flex-shrink:0;cursor:pointer"/>
           <label for="consentChk" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.6;cursor:pointer">I agree to the <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Privacy Policy</span> and <span onclick="openPrivacyModal();event.preventDefault();" style="color:var(--accent);text-decoration:underline;cursor:pointer">Terms of Service</span></label>
         </div>
-        <button id="btnUp" onclick="doSignUp()" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
+        <button id="btnUp" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px">Create Free Account &#x2192;</button>
         <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">Scholar $29/mo &nbsp;&middot;&nbsp; Researcher $59/mo</div>
         <div style="margin-top:8px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">Already have an account? <span onclick="authTab('in')" style="color:var(--accent);cursor:pointer">Sign in</span></div>
         <div style="margin-top:6px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--muted)">7-day trial &nbsp;&middot;&nbsp; No credit card required</div>
@@ -1259,108 +1259,6 @@ function closePrivacyModal(){document.getElementById('privacyModal').style.displ
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePrivacyModal();});
 
 // ── INIT ─────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function(){
-  renderTool('notes','from-text');
-  updateTrialNav(parseInt(localStorage.getItem('ns_used')||'0',10));
-});
-
-// ── FILE UPLOAD HANDLER ──────────────────────────────────────────
-function handleUpload(input, targetId){
-  var file = input.files[0];
-  if(!file) return;
-
-  var nameEl = document.getElementById('upl_name_' + targetId.replace('f_',''));
-  if(nameEl) nameEl.textContent = file.name + ' (' + Math.round(file.size/1024) + 'KB)';
-
-  var ext = file.name.split('.').pop().toLowerCase();
-
-  // Plain text files — read directly
-  if(['txt','md','csv','json','rtf'].indexOf(ext) !== -1){
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var el = document.getElementById(targetId);
-      if(el){ el.value = e.target.result; el.dispatchEvent(new Event('input')); }
-      toast('\u2713 ' + file.name + ' loaded');
-    };
-    reader.readAsText(file);
-    return;
-  }
-
-  // PDF — extract text using FileReader + basic text extraction
-  if(ext === 'pdf'){
-    var reader2 = new FileReader();
-    reader2.onload = function(e){
-      // Simple PDF text extraction: grab readable strings from binary
-      var arr = new Uint8Array(e.target.result);
-      var text = '';
-      var buf = '';
-      for(var i = 0; i < arr.length; i++){
-        var ch = arr[i];
-        if(ch >= 32 && ch < 127){
-          buf += String.fromCharCode(ch);
-        } else {
-          if(buf.length > 4) text += buf + ' ';
-          buf = '';
-        }
-      }
-      // Clean PDF junk tokens
-      var cleaned = text
-        .replace(/\bBT\b|\bET\b|\bTf\b|\bTd\b|\bTj\b|\bTJ\b|\bTm\b|\bcm\b|\bBMC\b|\bEMC\b|\bDo\b/g, ' ')
-        .replace(/[^\x20-\x7E\n]/g, ' ')
-        .replace(/\s{3,}/g, '\n')
-        .replace(/[A-Za-z0-9]\s{0,2}([A-Z][a-z])/g, '$1')
-        .trim();
-      var el = document.getElementById(targetId);
-      if(el){
-        el.value = cleaned.length > 100 ? cleaned : '[PDF text extraction limited — please paste the text manually for best results]';
-        el.dispatchEvent(new Event('input'));
-      }
-      toast(cleaned.length > 100 ? '\u2713 PDF text extracted — review and edit if needed' : '\u26A0 PDF extraction limited — paste text manually for best results');
-    };
-    reader2.readAsArrayBuffer(file);
-    return;
-  }
-
-  // DOCX — extract text from the zip XML
-  if(ext === 'docx' || ext === 'doc'){
-    var reader3 = new FileReader();
-    reader3.onload = function(e){
-      // Try to extract readable text from docx XML
-      var arr2 = new Uint8Array(e.target.result);
-      // Convert to string looking for w:t tags (Word text elements)
-      var raw = '';
-      for(var j = 0; j < Math.min(arr2.length, 500000); j++){
-        var c2 = arr2[j];
-        if(c2 >= 32 && c2 < 127) raw += String.fromCharCode(c2);
-        else if(c2 === 10 || c2 === 13) raw += ' ';
-      }
-      // Extract text between <w:t> tags
-      var matches = raw.match(/<w:t[^>]*>([^<]+)<\/w:t>/g)||[];
-      var wordText = matches.map(function(m){
-        return m.replace(/<[^>]+>/g,'');
-      }).join(' ').replace(/\s+/g,' ').trim();
-
-      var el = document.getElementById(targetId);
-      if(el){
-        el.value = wordText.length > 50 ? wordText : '[Word text extraction limited — please paste the text manually]';
-        el.dispatchEvent(new Event('input'));
-      }
-      toast(wordText.length > 50 ? '\u2713 Word document text extracted' : '\u26A0 Word extraction limited — paste text manually');
-    };
-    reader3.readAsArrayBuffer(file);
-    return;
-  }
-
-  toast('\u26A0 Unsupported format. Please paste the text directly or use TXT/PDF/DOCX.');
-}
-// ─────────────────────────────────────────────────────────────────
-
-</script>
-
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- SUPABASE AUTH MODULE                                         -->
-<!-- ══════════════════════════════════════════════════════════ -->
-<script>
 'use strict';
 
 function authErr(id,msg){var e=document.getElementById(id);if(e){e.textContent=msg;e.style.display=msg?'block':'none';}}
@@ -1511,24 +1409,127 @@ document.addEventListener('DOMContentLoaded',function(){
   // Then check if there is an existing session in background
   fetch('/api/users/me',{credentials:'include',headers:{'Accept':'application/json'}})
   .then(function(r){
-    // Make sure we got JSON not HTML
     var ct=r.headers.get('content-type')||'';
     if(!ct.includes('application/json'))throw new Error('not json');
     if(!r.ok)throw new Error('no session');
     return r.json();
   })
   .then(function(d){
-    if(d&&d.user){
-      // Valid session - sign them in
-      onSignedIn(d.user);
-    }
-    // else stay on auth wall
+    if(d&&d.user) onSignedIn(d.user);
   })
   .catch(function(){
-    // No session or error - stay on auth wall (already shown)
+    // stay on auth wall
   });
+
+  // Wire buttons via addEventListener — most reliable cross-browser approach
+  var btnUp = document.getElementById('btnUp');
+  var btnIn = document.getElementById('btnIn');
+  if(btnUp) btnUp.addEventListener('click', function(e){ e.preventDefault(); doSignUp(); });
+  if(btnIn) btnIn.addEventListener('click', function(e){ e.preventDefault(); doSignIn(); });
 });
+
+document.addEventListener('DOMContentLoaded', function(){
+  renderTool('notes','from-text');
+  updateTrialNav(parseInt(localStorage.getItem('ns_used')||'0',10));
+});
+
+// ── FILE UPLOAD HANDLER ──────────────────────────────────────────
+function handleUpload(input, targetId){
+  var file = input.files[0];
+  if(!file) return;
+
+  var nameEl = document.getElementById('upl_name_' + targetId.replace('f_',''));
+  if(nameEl) nameEl.textContent = file.name + ' (' + Math.round(file.size/1024) + 'KB)';
+
+  var ext = file.name.split('.').pop().toLowerCase();
+
+  // Plain text files — read directly
+  if(['txt','md','csv','json','rtf'].indexOf(ext) !== -1){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var el = document.getElementById(targetId);
+      if(el){ el.value = e.target.result; el.dispatchEvent(new Event('input')); }
+      toast('\u2713 ' + file.name + ' loaded');
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  // PDF — extract text using FileReader + basic text extraction
+  if(ext === 'pdf'){
+    var reader2 = new FileReader();
+    reader2.onload = function(e){
+      // Simple PDF text extraction: grab readable strings from binary
+      var arr = new Uint8Array(e.target.result);
+      var text = '';
+      var buf = '';
+      for(var i = 0; i < arr.length; i++){
+        var ch = arr[i];
+        if(ch >= 32 && ch < 127){
+          buf += String.fromCharCode(ch);
+        } else {
+          if(buf.length > 4) text += buf + ' ';
+          buf = '';
+        }
+      }
+      // Clean PDF junk tokens
+      var cleaned = text
+        .replace(/\bBT\b|\bET\b|\bTf\b|\bTd\b|\bTj\b|\bTJ\b|\bTm\b|\bcm\b|\bBMC\b|\bEMC\b|\bDo\b/g, ' ')
+        .replace(/[^\x20-\x7E\n]/g, ' ')
+        .replace(/\s{3,}/g, '\n')
+        .replace(/[A-Za-z0-9]\s{0,2}([A-Z][a-z])/g, '$1')
+        .trim();
+      var el = document.getElementById(targetId);
+      if(el){
+        el.value = cleaned.length > 100 ? cleaned : '[PDF text extraction limited — please paste the text manually for best results]';
+        el.dispatchEvent(new Event('input'));
+      }
+      toast(cleaned.length > 100 ? '\u2713 PDF text extracted — review and edit if needed' : '\u26A0 PDF extraction limited — paste text manually for best results');
+    };
+    reader2.readAsArrayBuffer(file);
+    return;
+  }
+
+  // DOCX — extract text from the zip XML
+  if(ext === 'docx' || ext === 'doc'){
+    var reader3 = new FileReader();
+    reader3.onload = function(e){
+      // Try to extract readable text from docx XML
+      var arr2 = new Uint8Array(e.target.result);
+      // Convert to string looking for w:t tags (Word text elements)
+      var raw = '';
+      for(var j = 0; j < Math.min(arr2.length, 500000); j++){
+        var c2 = arr2[j];
+        if(c2 >= 32 && c2 < 127) raw += String.fromCharCode(c2);
+        else if(c2 === 10 || c2 === 13) raw += ' ';
+      }
+      // Extract text between <w:t> tags
+      var matches = raw.match(/<w:t[^>]*>([^<]+)<\/w:t>/g)||[];
+      var wordText = matches.map(function(m){
+        return m.replace(/<[^>]+>/g,'');
+      }).join(' ').replace(/\s+/g,' ').trim();
+
+      var el = document.getElementById(targetId);
+      if(el){
+        el.value = wordText.length > 50 ? wordText : '[Word text extraction limited — please paste the text manually]';
+        el.dispatchEvent(new Event('input'));
+      }
+      toast(wordText.length > 50 ? '\u2713 Word document text extracted' : '\u26A0 Word extraction limited — paste text manually');
+    };
+    reader3.readAsArrayBuffer(file);
+    return;
+  }
+
+  toast('\u26A0 Unsupported format. Please paste the text directly or use TXT/PDF/DOCX.');
+}
+// ─────────────────────────────────────────────────────────────────
+
 </script>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SUPABASE AUTH MODULE                                         -->
+<!-- ══════════════════════════════════════════════════════════ -->
+
 
 <!-- ══════════════════════════════════════════════════════════ -->
 <!-- MFA MODULE                                                   -->
