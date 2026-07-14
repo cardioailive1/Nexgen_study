@@ -163,7 +163,13 @@ router.post('/register', [
       }
     });
 
-    await sendVerificationEmail(email, fullName, verificationToken);
+    // Send verification email — non-fatal if SMTP not configured
+    try {
+      await sendVerificationEmail(email, fullName, verificationToken);
+    } catch (emailErr) {
+      console.warn('Verification email failed (SMTP may not be configured):', emailErr.message);
+    }
+
     await auditLog(prisma, { userId: user.id, action: 'USER_REGISTERED', ipAddress: req.ip });
 
     res.status(201).json({
@@ -310,7 +316,11 @@ router.post('/forgot-password', [body('email').isEmail().normalizeEmail()], asyn
     const user = await req.prisma.user.findUnique({ where: { email: req.body.email } });
     if (user) {
       const token = jwt.sign({ sub: user.id, type: 'password_reset' }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      await sendPasswordResetEmail(user.email, user.fullName, token);
+      try {
+        await sendPasswordResetEmail(user.email, user.fullName, token);
+      } catch (emailErr) {
+        console.warn('Password reset email failed:', emailErr.message);
+      }
       await auditLog(req.prisma, { userId: user.id, action: 'PASSWORD_RESET_REQUESTED', ipAddress: req.ip });
     }
     res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
