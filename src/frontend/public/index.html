@@ -1495,16 +1495,39 @@ function signOut(){
 
 document.addEventListener('DOMContentLoaded',function(){
   var params=new URLSearchParams(window.location.search);
-  if(params.get('token')){showResetForm();return;}
+
+  // Password reset
+  if(params.get('token')){showAuth('up');showResetForm();return;}
+
+  // Stripe return
   if(params.get('subscription')==='success'){
     localStorage.removeItem('ns_used');
     history.replaceState(null,'',window.location.pathname);
     toast('\u2713 Subscription activated!');
   }
-  fetch('/api/users/me',{credentials:'include'})
-  .then(function(r){if(!r.ok)throw new Error('no session');return r.json();})
-  .then(function(d){if(d.user)onSignedIn(d.user);else showAuth('up');})
-  .catch(function(){showAuth('up');});
+
+  // Always show auth wall immediately — don't wait for network
+  showAuth('up');
+
+  // Then check if there is an existing session in background
+  fetch('/api/users/me',{credentials:'include',headers:{'Accept':'application/json'}})
+  .then(function(r){
+    // Make sure we got JSON not HTML
+    var ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json'))throw new Error('not json');
+    if(!r.ok)throw new Error('no session');
+    return r.json();
+  })
+  .then(function(d){
+    if(d&&d.user){
+      // Valid session - sign them in
+      onSignedIn(d.user);
+    }
+    // else stay on auth wall
+  })
+  .catch(function(){
+    // No session or error - stay on auth wall (already shown)
+  });
 });
 </script>
 
