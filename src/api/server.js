@@ -53,19 +53,15 @@ app.get('/health', (_req, res) => {
 
 // ── Security headers ──────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'js.stripe.com'],
-      styleSrc:    ["'self'", "'unsafe-inline'", 'fonts.googleapis.com'],
-      fontSrc:     ["'self'", 'fonts.gstatic.com'],
-      imgSrc:      ["'self'", 'data:', 'blob:', '*.stripe.com'],
-      connectSrc:  ["'self'", 'api.anthropic.com', '*.supabase.co', 'api.stripe.com'],
-      frameSrc:    ["'self'", 'js.stripe.com'],
-      objectSrc:   ["'none'"],
-    },
-  },
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  originAgentCluster: false,
+  xDnsPrefetchControl: false,
+  xDownloadOptions: false,
+  xPermittedCrossDomainPolicies: false,
+  hsts: false,
 }));
 
 app.use(securityHeaders);
