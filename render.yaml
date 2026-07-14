@@ -8,8 +8,8 @@ services:
     plan: starter
     branch: main
     rootDir: .
-    buildCommand: npm install --omit=dev && npx prisma generate --schema=prisma/schema.prisma && npx prisma migrate deploy --schema=prisma/schema.prisma
-    startCommand: npm start
+    buildCommand: npm install --omit=dev && npx prisma generate --schema=prisma/schema.prisma
+    startCommand: npx prisma db push --schema=prisma/schema.prisma --accept-data-loss && npm start
     healthCheckPath: /api/health
     autoDeploy: true
 
