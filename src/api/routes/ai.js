@@ -27,7 +27,7 @@ const COST = {
 
 // Validate and sanitize AI requests
 const validateAiRequest = [
-  body('tool').isIn(['notes','essay','lecture','research','slides','flash','cite','stem','notebook']),
+  body('tool').isIn(['notes','essay','lecture','research','slides','flash','cite','stem','notebook','clinical']),
   body('subTool').isString().trim().isLength({ max: 50 }),
   body('prompt').isString().trim().isLength({ min: 1, max: 20000 }),
   body('system').isString().trim().isLength({ min: 1, max: 8000 }),
