@@ -171,6 +171,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <button class="tool-tab"        id="tabCite"     onclick="setTool('cite')">    &#x1F4DA; Citations</button>
     <button class="tool-tab"        id="tabNotebook" onclick="setTool('notebook')">&#x1F9EA; NexGen Notebook</button>
     <button class="tool-tab"        id="tabStem"     onclick="setTool('stem')">&#x1F52C; STEM Education</button>
+    <button class="tool-tab"        id="tabClinical" onclick="setTool('clinical')">&#x1FA7A; Nursing &amp; Medicine</button>
   </div>
 
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
@@ -231,6 +232,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       <div class="sb-item" id="sb-stem-labdesign" onclick="setSubTool('stem','labdesign')">&#x1F9EC; Lab Design</div>
       <div class="sb-item" id="sb-stem-codelearn" onclick="setSubTool('stem','codelearn')">&#x1F4BB; Code &amp; Algorithms</div>
       <div class="sb-item" id="sb-stem-formulasheet" onclick="setSubTool('stem','formulasheet')">&#x1F4D0; Formula Sheet</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Nursing &amp; Medicine</div>
+      <div class="sb-item" id="sb-clinical-concepts"         onclick="setSubTool('clinical','concepts')">&#x1F9EC; Clinical Concepts</div>
+      <div class="sb-item" id="sb-clinical-homework"         onclick="setSubTool('clinical','homework')">&#x1F4DA; Homework &amp; Assignments</div>
+      <div class="sb-item" id="sb-clinical-pharmacology"     onclick="setSubTool('clinical','pharmacology')">&#x1F48A; Pharmacology</div>
+      <div class="sb-item" id="sb-clinical-casestudy"        onclick="setSubTool('clinical','casestudy')">&#x1F4CB; Case Study Analysis</div>
+      <div class="sb-item" id="sb-clinical-nursingprocess"   onclick="setSubTool('clinical','nursingprocess')">&#x1FA7A; Nursing Process &amp; Care Plans</div>
+      <div class="sb-item" id="sb-clinical-anatomy"          onclick="setSubTool('clinical','anatomy')">&#x1FAC0; Anatomy &amp; Physiology</div>
+      <div class="sb-item" id="sb-clinical-pathophysiology"  onclick="setSubTool('clinical','pathophysiology')">&#x1F9E0; Pathophysiology</div>
+      <div class="sb-item" id="sb-clinical-mentalhealth"     onclick="setSubTool('clinical','mentalhealth')">&#x1F9E0; Mental Health &amp; Psychiatry</div>
+      <div class="sb-item" id="sb-clinical-clinicalskills"   onclick="setSubTool('clinical','clinicalskills')">&#x1F4DD; Clinical Skills &amp; Procedures</div>
+      <div class="sb-item" id="sb-clinical-leadership"       onclick="setSubTool('clinical','leadership')">&#x2696;&#xFE0F; Leadership, Law &amp; Ethics</div>
+      <div class="sb-item" id="sb-clinical-evidencepractice" onclick="setSubTool('clinical','evidencepractice')">&#x1F4CA; Evidence-Based Practice</div>
+      <div class="sb-item" id="sb-clinical-examprep"         onclick="setSubTool('clinical','examprep')">&#x1F3AF; Exam Prep (NCLEX/OSCE)</div>
+      <div class="sb-item" id="sb-clinical-reflection"       onclick="setSubTool('clinical','reflection')">&#x1F4AC; Reflective Writing</div>
     </div>
 
     <div style="margin-top:auto;padding:14px;border-top:1px solid var(--b)">
@@ -317,6 +335,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
           <div>
             <div style="font-size:12px;font-weight:700;color:#fff">STEM Education</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">Concept explainers, problem solving step-by-step, mathematical proofs, lab design, code &amp; algorithms, formula sheets</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px;background:rgba(255,92,92,.08);border:1px solid rgba(255,92,92,.2);border-radius:9px">
+          <div style="font-size:18px;flex-shrink:0">&#x1FA7A;</div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fff">Nursing &amp; Medicine</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Clinical concepts, pharmacology, case studies, anatomy, pathophysiology, nursing process (ADPIE) and NCLEX/OSCE exam prep</div>
           </div>
         </div>
       </div>
@@ -874,6 +899,150 @@ var TOOLS = {
         system:"You are an expert academic tutor. Create a comprehensive, well-organised formula reference sheet. Group formulas by topic with clear headers. For each formula: show the formula clearly, define every variable with its SI units, note any important conditions or assumptions, and include a brief application note if the format requires it. Include a quick-reference summary table at the top showing the most important formulas. Flag any formulas where sign conventions differ between textbooks. End with ##XAI## markers.",
         promptFn:function(d){ return 'Subject: '+d.subject+'. Level: '+d.level+'. Format: '+d.format+'.'+(d.topics?' Topics: '+d.topics:''); }
       }
+    }
+  }
+
+  ,
+  clinical: { title:'Nursing & Medicine', sub:'Comprehensive academic support for nursing and medical students — from fundamentals to clinical practice, homework help, essays and exam preparation',
+    subs:{
+
+      'concepts': { label:'Clinical Concepts', icon:'&#x1F9EC;',
+        fields:[
+          {id:'concept', label:'Disease / Condition / Topic', type:'text', placeholder:'e.g. Heart failure, sepsis, type 2 diabetes, COPD, acute kidney injury, stroke'},
+          {id:'level', label:'Level', type:'select', options:['Pre-nursing / Healthcare Assistant','Nursing Student (Year 1-2)','Nursing Student (Year 3-4)','Medical Student (Pre-clinical)','Medical Student (Clinical)','Postgraduate / Specialty Training']},
+          {id:'focus', label:'What You Need Help With', type:'textarea', placeholder:'e.g. I have an assignment on heart failure management. I need help understanding pathophysiology, nursing interventions and patient education. Include everything my lecturer might ask...', rows:4},
+        ],
+        system:"You are an expert clinical educator and academic tutor for nursing and medical students. Provide a comprehensive educational resource on this topic that directly helps with coursework and assignments. Structure your response: 1) OVERVIEW — definition, classification/types, epidemiology, 2) AETIOLOGY & RISK FACTORS — causes, predisposing factors, 3) PATHOPHYSIOLOGY — mechanism from normal to disease state, step-by-step with clinical correlation, 4) CLINICAL PRESENTATION — signs and symptoms with underlying mechanisms explained, 5) DIAGNOSTIC INVESTIGATIONS — tests ordered, rationale, expected findings, 6) MEDICAL MANAGEMENT — treatment goals, medications (with mechanisms), surgical/procedural interventions, 7) NURSING MANAGEMENT — ABCDE assessment, nursing priorities, nursing interventions with rationale, patient positioning, fluid balance, pain management, 8) PATIENT AND FAMILY EDUCATION — what to teach, how to teach it, 9) COMPLICATIONS — what to watch for, early warning signs, 10) MULTIDISCIPLINARY TEAM ROLES, 11) KEY POINTS AND ESSAY HOOKS — what makes a distinction-level answer on this topic. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Topic: '+d.concept+'. Level: '+d.level+'.'+(d.focus?' Student context: '+d.focus:''); }
+      },
+
+      'homework': { label:'Homework & Assignment Help', icon:'&#x1F4DA;',
+        fields:[
+          {id:'task', label:'Assignment / Homework Task', type:'textarea', placeholder:'Paste your assignment question, essay title, or homework task exactly as given. Include word count, referencing style and any specific instructions from your lecturer...', rows:5},
+          {id:'level', label:'Level', type:'select', options:['Year 1 Nursing','Year 2 Nursing','Year 3 Nursing (Final Year)','Medical Student Pre-clinical','Medical Student Clinical','Postgraduate / Masters']},
+          {id:'subject', label:'Subject Area', type:'select', options:['Adult Nursing','Mental Health Nursing','Child / Paediatric Nursing','Learning Disabilities Nursing','Midwifery','Paramedic Science','Medicine (MBBS)','Pharmacology','Pathophysiology','Health Assessment','Research Methods / EBP','Public Health','Leadership & Management','Law & Ethics in Healthcare']},
+          {id:'notes', label:'What You Already Know / Have Started', type:'textarea', placeholder:'Any notes, ideas or draft work you already have. The more context you give, the more tailored the help will be...', rows:4},
+        ],
+        system:"You are an expert nursing and medical academic tutor who helps students produce distinction-level work. Analyse the assignment question carefully and provide comprehensive academic support. Structure: 1) UNDERSTANDING THE QUESTION — break down what is being asked, key command words (discuss, critically analyse, evaluate), marking criteria implications, 2) SUGGESTED ESSAY / ASSIGNMENT STRUCTURE — introduction approach, main body sections with suggested content for each, conclusion guidance, 3) KEY CONTENT TO INCLUDE — evidence-based content for each section, theories and frameworks to reference (e.g. Roper-Logan-Tierney, Orem, Care Quality Commission standards, NMC Code, NICE guidelines), 4) CRITICAL ANALYSIS POINTS — what distinguishes a pass from a merit or distinction on this topic, 5) ACADEMIC WRITING GUIDANCE — how to write critically not descriptively, how to integrate evidence, avoiding common mistakes, 6) SUGGESTED REFERENCES STRUCTURE — types of sources to use (NICE, NMC, RCN, peer-reviewed journals), 7) DRAFT INTRODUCTION — a model introduction paragraph the student can adapt. Always emphasise academic integrity — this is a guide to help students learn and write their own work. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Assignment: +d.task+. Level: '+d.level+'. Subject: '+d.subject+'.'+(d.notes?' Student notes: '+d.notes:''); }
+      },
+
+      'pharmacology': { label:'Pharmacology', icon:'&#x1F48A;',
+        fields:[
+          {id:'drug', label:'Drug / Drug Class / Topic', type:'text', placeholder:'e.g. Metformin, beta-blockers, ACE inhibitors, opioids, insulin, warfarin, antipsychotics'},
+          {id:'level', label:'Level', type:'select', options:['Nursing Student (Year 1-2)','Nursing Student (Year 3-4)','Medical Student','Pharmacology Exam Prep','Postgraduate']},
+          {id:'context', label:'Learning Context', type:'text', placeholder:'e.g. Writing an essay on diabetic medication, preparing for OSCE drug calculation, assignment on pain management'},
+        ],
+        system:"You are a clinical pharmacology educator and academic tutor. Provide a comprehensive drug profile. Structure: 1) DRUG CLASS & OVERVIEW, 2) MECHANISM OF ACTION — how it works at the receptor/cellular level with diagram description, 3) INDICATIONS — all approved uses, 4) CONTRAINDICATIONS & CAUTIONS — absolute and relative, 5) PHARMACOKINETICS — absorption, distribution, metabolism, excretion (ADME) with clinical implications, 6) DOSE & ADMINISTRATION — routes, typical doses, special populations (renal/hepatic impairment, elderly, paediatric, pregnancy), 7) ADVERSE EFFECTS — common vs serious, mechanism behind key side effects, 8) DRUG INTERACTIONS — pharmacokinetic and pharmacodynamic interactions, clinical significance, 9) NURSING CONSIDERATIONS — pre-administration checks, administration technique, monitoring parameters, what to document, 10) PATIENT EDUCATION — what to tell patients, lifestyle advice, 11) CLINICAL PEARLS & MNEMONICS — memorable aids for exams, 12) CALCULATIONS PRACTICE — relevant drug calculation examples if applicable. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Drug/topic: '+d.drug+'. Level: '+d.level+'.'+(d.context?' Context: '+d.context:''); }
+      },
+
+      'casestudy': { label:'Case Study Analysis', icon:'&#x1F4CB;',
+        fields:[
+          {id:'specialty', label:'Clinical Specialty', type:'select', options:['Adult Nursing — Medical','Adult Nursing — Surgical','Mental Health Nursing','Child / Paediatric Nursing','Midwifery / Obstetrics','Emergency / Acute Care','Critical Care / ICU','Community / District Nursing','Learning Disabilities','Cardiology','Respiratory','Gastroenterology','Neurology','Orthopaedics','Oncology','Endocrinology','Renal / Urology','Dermatology','Geriatrics / Elderly Care']},
+          {id:'purpose', label:'Purpose of Analysis', type:'select', options:['Academic assignment / reflective account','OSCE preparation','Clinical reasoning practice','Case conference preparation','Portfolio evidence']},
+          {id:'case', label:'Patient Case Details', type:'textarea', placeholder:'Provide as much detail as possible: patient age, gender, presenting complaint, relevant history (medical, surgical, social, family), current medications, allergies, clinical observations (BP, HR, RR, SpO2, temp, pain score), relevant investigation results, current management... The richer the detail, the better the analysis.', rows:10},
+        ],
+        system:"You are an expert clinical educator, OSCE examiner and academic case study analyst for nursing and medical students. Provide a thorough, academically rigorous case analysis. Structure: 1) CASE SUMMARY — concise clinical overview, 2) CLINICAL REASONING — primary diagnosis with justification, differential diagnoses with reasoning (rule in/rule out), relevant anatomy and pathophysiology, 3) IMMEDIATE PRIORITIES — ABCDE assessment findings and immediate actions, NEWS2/early warning score, 4) INVESTIGATIONS — which investigations and why, interpret any results provided, 5) MEDICAL MANAGEMENT — treatment plan with evidence base (NICE guidelines, SIGN, BNF), 6) NURSING ASSESSMENT — holistic assessment using appropriate framework (Roper-Logan-Tierney, Gordon, FLACC where relevant), 7) NURSING CARE PLAN — 3-5 NANDA nursing diagnoses correctly formatted, SMART goals, nursing interventions with rationale, evaluation criteria, 8) PATIENT EDUCATION AND DISCHARGE PLANNING, 9) MDT CONSIDERATIONS — roles of different professionals, referrals, 10) REFLECTION POINTS — what this case teaches, links to NMC/GMC standards, professional values, 11) ACADEMIC WRITING GUIDE — how to write this case up as an assignment. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Specialty: '+d.specialty+'. Purpose: '+d.purpose+'. Case: +d.case+'; }
+      },
+
+      'nursingprocess': { label:'Nursing Process & Care Plans', icon:'&#x1FA7A;',
+        fields:[
+          {id:'patient', label:'Patient / Condition', type:'text', placeholder:'e.g. 72-year-old with acute exacerbation of COPD, post-op hip replacement day 2, 45-year-old with first episode psychosis'},
+          {id:'setting', label:'Care Setting', type:'select', options:['Acute Medical Ward','Surgical Ward','Emergency Department','ICU / HDU','Mental Health Inpatient','Community / District Nursing','Care Home / Nursing Home','Paediatric Ward','Maternity / Postnatal','Outpatient / Clinic']},
+          {id:'framework', label:'Care Planning Framework', type:'select', options:['ADPIE (Assess, Diagnose, Plan, Implement, Evaluate)','Roper-Logan-Tierney Activities of Living','Orem Self-Care Model','Roy Adaptation Model','NANDA / NIC / NOC','SBAR (Situation-Background-Assessment-Recommendation)','Care Programme Approach (Mental Health)','Generic holistic care plan']},
+          {id:'context', label:'Clinical Context & Presenting Problems', type:'textarea', placeholder:'Describe the patient situation: what problems are they presenting with? What are the priorities? Any specific concerns from the assignment brief?', rows:4},
+        ],
+        system:"You are an expert nursing educator and clinical practice specialist. Develop a comprehensive, academically rigorous nursing care plan. Structure using the selected framework: ASSESSMENT — systematic head-to-toe or activities of living assessment, subjective and objective data, use of validated assessment tools (NEWS2, Waterlow, Malnutrition Universal Screening Tool, pain scales), risk assessments; NURSING DIAGNOSES — 4-6 NANDA nursing diagnoses in correct format 'X related to Y as evidenced by Z', prioritised using Maslow hierarchy of needs, rationale for prioritisation; PLANNING — SMART goals for each diagnosis (short-term 24-48h and long-term goals), patient involvement in goal setting, expected outcomes; IMPLEMENTATION — specific nursing interventions for each diagnosis (independent, dependent and collaborative), evidence base for each intervention (cite NICE, RCN, NMC standards), frequency and monitoring parameters; EVALUATION — how to measure goal achievement, timeframes, documentation requirements, when to escalate; MDT INVOLVEMENT — roles and referrals; PATIENT/FAMILY EDUCATION — teaching plan; DISCHARGE PLANNING — criteria, follow-up, community support. Provide academic commentary linking to nursing theory and professional standards throughout. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Patient: '+d.patient+'. Setting: '+d.setting+'. Framework: '+d.framework+'.'+(d.context?' Clinical context: '+d.context:''); }
+      },
+
+      'anatomy': { label:'Anatomy & Physiology', icon:'&#x1FAC0;',
+        fields:[
+          {id:'topic', label:'System / Region / Structure', type:'text', placeholder:'e.g. Cardiovascular system, respiratory mechanics, renal tubule, brachial plexus, coagulation cascade, neurological assessment'},
+          {id:'level', label:'Level', type:'select', options:['Pre-nursing Fundamentals','Nursing Student (Year 1-2)','Medical Student (Pre-clinical)','Clinical Application Level','Postgraduate']},
+          {id:'purpose', label:'Learning Purpose', type:'select', options:['Understand the basics','Assignment or essay support','Exam revision','Link to clinical practice','Understand a patient condition']},
+          {id:'context', label:'Specific Focus or Assignment Brief (optional)', type:'textarea', placeholder:'Any specific angles, assignment requirements or clinical context to focus on...', rows:3},
+        ],
+        system:"You are an expert anatomy and physiology educator with strong clinical application focus for healthcare students. Provide a comprehensive, engaging explanation. Structure: 1) ANATOMICAL OVERVIEW — location, structure, key anatomical relationships, surface landmarks, 2) HISTOLOGY / MICROSTRUCTURE — cell types, tissue composition where relevant, 3) NORMAL PHYSIOLOGY — how it functions, key processes, regulatory mechanisms, feedback loops, 4) CLINICAL CORRELATIONS — how understanding this anatomy/physiology directly applies to: patient assessment findings, common clinical conditions, clinical investigations and their rationale, 5) APPLIED PHYSIOLOGY — homeostatic mechanisms, compensation, responses to disease/injury, 6) ASSESSMENT AND EXAMINATION — how to assess this system clinically (what nurses and doctors look for), 7) COMMON PATHOLOGIES — brief overview of what happens when things go wrong, 8) ESSAY AND EXAM APPLICATION — how to demonstrate understanding in academic work, key terminology to use, 9) DIAGRAMS DESCRIBED — descriptions of key diagrams students should be able to draw/label. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Level: '+d.level+'. Purpose: '+d.purpose+'.'+(d.context?' Context: '+d.context:''); }
+      },
+
+      'pathophysiology': { label:'Pathophysiology', icon:'&#x1F9E0;',
+        fields:[
+          {id:'condition', label:'Disease / Condition', type:'text', placeholder:'e.g. Myocardial infarction, acute kidney injury, pneumonia, DVT/PE, anaphylaxis, depression, schizophrenia'},
+          {id:'level', label:'Level', type:'select', options:['Nursing Student (Year 1-2)','Nursing Student (Year 3-4)','Medical Student (Pre-clinical)','Medical Student (Clinical)','Postgraduate']},
+          {id:'purpose', label:'Learning Purpose', type:'select', options:['Essay / assignment writing','Understand a patient case','Exam revision','Understand why a treatment works','Understand nursing interventions rationale']},
+          {id:'focus', label:'Specific Focus (optional)', type:'text', placeholder:'e.g. Focus on how this explains the nursing assessment findings, or the link between pathophysiology and drug treatment'},
+        ],
+        system:"You are a pathophysiology expert educator for nursing and medical students. Explain the pathophysiology in a way that directly supports academic work and clinical understanding. Structure: 1) NORMAL PHYSIOLOGY — brief overview of normal function (what should be happening), 2) TRIGGER / AETIOLOGY — what initiates the pathological process, risk factors, precipitating events, 3) PATHOPHYSIOLOGICAL CASCADE — step-by-step numbered mechanism from initial insult to clinical outcome. Use: Initial event → Cellular response → Tissue/organ response → Systemic response → Clinical manifestation. Be detailed and mechanistic, 4) COMPENSATORY MECHANISMS — how the body attempts to restore homeostasis and why these eventually fail or cause problems, 5) CLINICAL MANIFESTATIONS EXPLAINED — link each sign and symptom directly to an underlying mechanism (e.g. 'dyspnoea occurs because...'), 6) INVESTIGATION FINDINGS EXPLAINED — why each investigation result is abnormal (e.g. 'troponin rises because...'), 7) TREATMENT RATIONALE — how each treatment targets specific mechanisms in the pathophysiology (e.g. 'ACE inhibitors work by...'), 8) NURSING INTERVENTION RATIONALE — link specific nursing actions to the underlying pathophysiology, 9) COMPLICATIONS AND THEIR MECHANISMS — why each complication develops, 10) ACADEMIC APPLICATION — how to write about pathophysiology at distinction level, use of theory and evidence. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Condition: '+d.condition+'. Level: '+d.level+'. Purpose: '+d.purpose+'.'+(d.focus?' Focus: '+d.focus:''); }
+      },
+
+      'mentalhealth': { label:'Mental Health & Psychiatry', icon:'&#x1F9E0;',
+        fields:[
+          {id:'topic', label:'Mental Health Topic / Condition', type:'text', placeholder:'e.g. Depression, bipolar disorder, schizophrenia, anxiety disorders, PTSD, personality disorders, eating disorders, substance misuse, dementia'},
+          {id:'level', label:'Level', type:'select', options:['Mental Health Nursing Student','General Nursing (mental health module)','Medical Student','Postgraduate / Specialty']},
+          {id:'angle', label:'Focus Angle', type:'select', options:['Clinical understanding (aetiology, presentation, treatment)','Nursing assessment and therapeutic relationship','Risk assessment and management','Mental health law and ethics (MHA 2007)','Recovery model and person-centred care','Psychopharmacology','CBT and psychological therapies','Assignment and essay writing']},
+          {id:'context', label:'Assignment / Learning Context', type:'textarea', placeholder:'Describe your assignment brief or what you need to understand. Include any specific frameworks or legislation your module focuses on...', rows:3},
+        ],
+        system:"You are an expert mental health nurse educator and academic tutor with deep knowledge of mental health nursing, psychiatry and mental health law. Provide a comprehensive, compassionate and academically rigorous resource. Structure based on the focus angle selected, but always include: 1) BIOPSYCHOSOCIAL MODEL — biological, psychological and social factors in aetiology, 2) CLINICAL PRESENTATION — DSM-5/ICD-11 diagnostic criteria, how the condition presents in practice, what the nurse observes, 3) MENTAL HEALTH ASSESSMENT — MSE (Mental State Examination) components, risk assessment (FACE risk assessment, risk formulation), therapeutic communication in assessment, 4) NURSING INTERVENTIONS — therapeutic use of self, de-escalation, observation levels, promoting recovery, 5) TREATMENT — psychopharmacology (mechanisms, nursing considerations), evidence-based psychological therapies, MDT roles, 6) LEGAL AND ETHICAL FRAMEWORK — Mental Health Act 2007, capacity (MCA 2005), NICE guidelines, NMC standards, safeguarding, 7) RECOVERY AND PERSON-CENTRED CARE — recovery model, service user involvement, stigma reduction, 8) CULTURAL COMPETENCE — cultural considerations in mental health, 9) ACADEMIC APPLICATION — how to write critically about mental health topics, key theories and frameworks to reference. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Level: '+d.level+'. Angle: '+d.angle+'.'+(d.context?' Context: '+d.context:''); }
+      },
+
+      'clinicalskills': { label:'Clinical Skills & Procedures', icon:'&#x1F4DD;',
+        fields:[
+          {id:'skill', label:'Clinical Skill or Procedure', type:'text', placeholder:'e.g. IV cannulation, urinary catheterisation, wound assessment and dressing, ECG interpretation, blood pressure, NG tube, medication administration, venepuncture, ABG interpretation, fluid resuscitation'},
+          {id:'level', label:'Level', type:'select', options:['Student Nurse (simulation lab)','Student Nurse (clinical placement)','Qualified Nurse (consolidation)','Medical Student','Foundation Doctor']},
+          {id:'context', label:'Learning Context', type:'text', placeholder:'e.g. Preparing for OSCE station, writing up a clinical skill reflection, assignment on patient safety'},
+        ],
+        system:"You are an expert clinical skills educator, simulation facilitator and OSCE examiner for nursing and medical students. Provide a comprehensive clinical skills guide that prepares students for both simulation and real clinical practice. Structure: 1) PURPOSE, INDICATIONS AND CONTRAINDICATIONS — when this skill is used and when it is not, 2) UNDERPINNING KNOWLEDGE — anatomy, physiology and pathophysiology relevant to this skill, why understanding this matters clinically, 3) LEGAL AND PROFESSIONAL FRAMEWORK — NMC/GMC standards, consent, documentation requirements, delegation rules, 4) INFECTION PREVENTION AND CONTROL — specific IPC measures for this skill, standard precautions, aseptic technique where applicable, 5) EQUIPMENT REQUIRED — full equipment list with rationale for each item, 6) PATIENT ASSESSMENT AND COMMUNICATION — pre-procedure assessment, gaining consent, explaining the procedure, positioning, 7) STEP-BY-STEP PROCEDURE — detailed numbered steps with clinical rationale for each key action, 8) INTRA-PROCEDURE MONITORING — what to observe, patient communication during procedure, 9) POST-PROCEDURE CARE AND DOCUMENTATION — aftercare, recording, reporting, 10) COMPLICATIONS — recognition, immediate management, when to escalate, 11) OSCE ASSESSMENT CRITERIA — what examiners look for, common reasons for failure, 12) CLINICAL SKILL REFLECTION GUIDE — how to write a reflective account using Gibbs or Johns framework, 13) DRUG CALCULATIONS (if relevant) — worked examples. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Skill: '+d.skill+'. Level: '+d.level+'.'+(d.context?' Context: '+d.context:''); }
+      },
+
+      'leadership': { label:'Leadership, Law & Ethics', icon:'&#x2696;&#xFE0F;',
+        fields:[
+          {id:'topic', label:'Topic', type:'text', placeholder:'e.g. Duty of candour, clinical negligence, whistleblowing, transformational leadership, clinical governance, informed consent, capacity and the MCA, safeguarding adults'},
+          {id:'level', label:'Level', type:'select', options:['Nursing Student (Year 1-2)','Nursing Student (Final Year)','Newly Qualified Nurse','Medical Student','Foundation Doctor']},
+          {id:'assignment', label:'Assignment / Task', type:'textarea', placeholder:'Paste your essay question, case scenario or specific learning requirement. Include word count and referencing style if for an assignment...', rows:4},
+        ],
+        system:"You are an expert healthcare law, ethics and leadership educator for nursing and medical students. Provide comprehensive academic support that directly helps with coursework. Structure: 1) LEGAL FRAMEWORK — relevant legislation (Health & Social Care Act, MCA 2005, MHA 2007, Human Rights Act, Equality Act), case law where relevant, statutory duties, 2) PROFESSIONAL REGULATORY FRAMEWORK — NMC Code (nursing), GMC Good Medical Practice (medicine), relevant professional standards and guidance, fitness to practise implications, 3) ETHICAL PRINCIPLES — Beauchamp and Childress 4 principles (autonomy, beneficence, non-maleficence, justice) applied to the topic, ethical theories (deontology, consequentialism, virtue ethics), 4) CLINICAL GOVERNANCE — patient safety, quality improvement, risk management, CQC standards, 5) LEADERSHIP THEORIES — transformational/transactional leadership, servant leadership, NHS Leadership Model, how these apply to the topic, 6) CASE EXAMPLES — how this plays out in practice, 7) ACADEMIC ESSAY STRUCTURE — how to write a critical, distinction-level essay on this topic, key arguments to make, 8) REFERENCING GUIDE — key sources to cite (NMC, GMC, NICE, government legislation, peer-reviewed journals, RCN). End with ##XAI## markers.",
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Level: '+d.level+'.'+(d.assignment?' Assignment: '+d.assignment:''); }
+      },
+
+      'evidencepractice': { label:'Evidence-Based Practice', icon:'&#x1F4CA;',
+        fields:[
+          {id:'topic', label:'Clinical Topic or Research Question', type:'text', placeholder:'e.g. Pressure ulcer prevention, hand hygiene compliance, early mobilisation post-surgery, therapeutic communication in dementia care'},
+          {id:'level', label:'Level', type:'select', options:['Nursing Student (Year 1-2)','Nursing Student (Year 3-4 / Dissertation)','Medical Student','Postgraduate / Research']},
+          {id:'task', label:'Task / Assignment Brief', type:'textarea', placeholder:'Describe your assignment: e.g. 2000-word critical appraisal of evidence, systematic review protocol, EBP improvement proposal, literature search strategy...', rows:4},
+        ],
+        system:"You are an expert evidence-based practice educator for nursing and medical students. Provide comprehensive support for EBP assignments and research projects. Structure: 1) EBP FRAMEWORK — explanation of EBP (PICO, evidence hierarchy, levels of evidence), research paradigms (qualitative, quantitative, mixed methods), 2) LITERATURE SEARCH STRATEGY — databases to use (CINAHL, Medline, Cochrane, PubMed), search terms and Boolean operators, inclusion/exclusion criteria, PRISMA flow diagram guidance, 3) EVIDENCE HIERARCHY — pyramid of evidence, ranking research designs, understanding systematic reviews, RCTs, cohort studies, qualitative research, 4) CRITICAL APPRAISAL — frameworks (CASP, CONSORT, GRADE), how to appraise validity, reliability and applicability, common methodological strengths and weaknesses, 5) KEY EVIDENCE SYNTHESIS — summary of current evidence base for the topic (main themes, key findings, gaps), 6) APPLICATION TO PRACTICE — how to translate evidence into clinical practice, barriers and facilitators, change management models (Lewin, PDSA cycle), 7) ACADEMIC WRITING FOR EBP — how to write critically and analytically, structuring a literature review or critical appraisal, 8) REFERENCING — APA, Vancouver or Harvard for healthcare, citing legislation, guidelines and grey literature. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Topic: '+d.topic+'. Level: '+d.level+'.'+(d.task?' Task: '+d.task:''); }
+      },
+
+      'examprep': { label:'Exam Prep (NCLEX/OSCE/Finals)', icon:'&#x1F3AF;',
+        fields:[
+          {id:'examtype', label:'Exam Type', type:'select', options:['NCLEX-RN (USA)','NCLEX-PN (USA)','UK NMC OSCE (OBIEE)','Medicine Finals OSCE','OSCEs — Clinical Reasoning','Written / MCQ Exam (Nursing)','Written / MCQ Exam (Medicine)','Nursing Viva / Portfolio','International Nurse — Overseas Registration','CBT — Nursing (UK) / USMLE Step 1 / Step 2']},
+          {id:'topic', label:'Exam Topic or Station', type:'text', placeholder:'e.g. Respiratory assessment OSCE, cardiac medications NCLEX, sepsis management, mental health risk assessment, drug calculations'},
+          {id:'level', label:'Level', type:'select', options:['Student (preparing for first attempt)','Final Year (graduating)','Resitting / Remediation','Internationally trained nurse/doctor','Postgraduate exam preparation']},
+          {id:'question', label:'Practice Question or OSCE Brief (optional)', type:'textarea', placeholder:'Paste a practice question, past paper question, or OSCE station brief to work through. Or describe what specific scenario or topic you want to practise...', rows:5},
+        ],
+        system:"You are an expert nursing and medical examination coach with deep knowledge of NCLEX, NMC OSCE, Medicine Finals, USMLE and UK nursing registration examinations. Provide targeted, effective exam preparation. Structure: 1) EXAM FORMAT — specific format of this exam, marking scheme, pass mark, common fail reasons, 2) THIS TOPIC IN THE EXAM — how this topic commonly appears, question styles, what assessors specifically test, 3) ESSENTIAL KNOWLEDGE — high-yield, must-know content for this topic presented concisely, 4) IF A QUESTION IS PROVIDED: work through it systematically — read carefully, identify what is being asked, eliminate wrong answers (NCLEX: use the nursing process, ABC, Maslow; OSCE: demonstrate safe practice and communication), explain the correct answer and why each distractor is wrong, 5) CLINICAL DECISION-MAKING FRAMEWORK — how to approach clinical questions under exam conditions, 6) MNEMONICS AND MEMORY AIDS — effective memorable aids for key content, 7) PRACTICE QUESTIONS — 5 exam-style questions with detailed rationale for each answer, 8) OSCE STATION TIPS (if applicable) — how to structure the station, common mistakes, what to say when you are not sure, 9) REVISION PLAN — focused revision strategy for this topic. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Exam type: '+d.examtype+'. Topic: '+d.topic+'. Level: '+d.level+'.'+(d.question?' Question/scenario: +d.question+':''); }
+      },
+
+      'reflection': { label:'Reflective Writing', icon:'&#x1F4AC;',
+        fields:[
+          {id:'model', label:'Reflective Model', type:'select', options:['Gibbs Reflective Cycle (1988)','Johns Model of Structured Reflection (2000)','Driscoll Model (What? So What? Now What?)','Schon Reflection-in-Action / Reflection-on-Action','Kolb Experiential Learning Cycle','ERA Cycle (Experience, Reflection, Action)','STAR Method (Situation, Task, Action, Result)']},
+          {id:'level', label:'Level', type:'select', options:['Nursing Student (Year 1)','Nursing Student (Year 2-3)','Newly Qualified Nurse','Medical Student','Portfolio / Revalidation']},
+          {id:'wordcount', label:'Word Count', type:'select', options:['500 words','750 words','1,000 words','1,500 words','2,000 words','2,500+ words']},
+          {id:'experience', label:'Clinical Experience to Reflect On', type:'textarea', placeholder:'Describe the clinical experience or situation you want to reflect on. Include: what happened, your role, what you did, what you were thinking and feeling, what went well, what did not go well, what you learned. The more detail you give, the better the reflection will be.', rows:7},
+        ],
+        system:"You are an expert reflective practice educator for nursing and medical students. Produce a high-quality, academically rigorous reflective account using the selected model that will help the student learn from their experience. Apply the chosen reflective model rigorously to the experience provided. Structure using the model stages exactly. Across all sections: maintain professional confidentiality (use pseudonyms e.g. 'Patient A', anonymise all identifying details), use first person reflective language, link experiences to theory (nursing models, NMC Code, NICE guidelines, relevant research), demonstrate critical thinking not just description, show emotional intelligence and professional development, link to future practice. For GIBBS: Description, Feelings, Evaluation, Analysis, Conclusion, Action Plan — each as a substantial section. For JOHNS: aesthetics, personal, ethics, empirics, reflexivity questions. For DRISCOLL: What, So What, Now What. Demonstrate how this experience has shaped professional identity and future practice. Include academic references where theory is cited. Write at distinction level with critical depth. End with ##XAI## markers.",
+        promptFn:function(d){ return 'Reflective model: '+d.model+'. Level: '+d.level+'. Word count: '+d.wordcount+'. Experience: +d.experience+'; }
+      }
+
     }
   }
 
