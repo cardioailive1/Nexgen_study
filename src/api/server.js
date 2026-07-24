@@ -93,6 +93,7 @@ app.use((req, _res, next) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────────
+console.log('Registering API routes...');
 app.use('/api/auth',          authRoutes);
 app.use('/api/ai',            aiRateLimiter, aiRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
@@ -102,15 +103,21 @@ app.use('/api/compliance',    complianceRoutes);
 
 // ── Serve static frontend ─────────────────────────────────────────
 const frontendPath = path.join(__dirname, '../frontend/public');
+console.log('Serving frontend from:', frontendPath);
 app.use(express.static(frontendPath, {
   maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
   etag: true,
 }));
 
 // SPA fallback
-app.get('*', (req, res) => {
+app.use('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API route not found' });
+    console.error('[404] Unmatched API route:', req.method, req.path);
+    return res.status(404).json({ 
+      error: 'API route not found', 
+      method: req.method,
+      path: req.path 
+    });
   }
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
