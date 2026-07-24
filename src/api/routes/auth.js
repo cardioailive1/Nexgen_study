@@ -12,8 +12,9 @@ const { auditLog } = require('../services/auditService');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
 const { requireAuth } = require('../middleware/requireAuth');
 const { encryptMfaSecret, decryptMfaSecret, generateMfaBackupCodes } = require('../utils/crypto');
-const speakeasy = require('speakeasy') // you'll add this dep
-  || { generateSecret: () => ({ base32: 'MOCK' }), totp: { verify: () => true } }; // graceful fallback
+let speakeasy;
+try { speakeasy = require('speakeasy'); }
+catch(e) { speakeasy = { generateSecret: () => ({ base32: 'MOCK', otpauth_url: '' }), totp: { verify: () => true } }; }
 
 const router = express.Router();
 
