@@ -97,7 +97,7 @@ strong{color:#1a202c}
   <section id="t1">
     <h2 class="section-title"><span class="num">01</span> Acceptance of Terms</h2>
     <p>By accessing or using NexGen Study ("the Service"), you agree to be bound by these Terms of Use ("Terms"). These Terms constitute a legally binding agreement between you and <strong>Corverxis Technologies Ltd</strong> ("Corverxis", "we", "us", "our").</p>
-    <p>If you do not agree to these Terms, you must not use the Service. By creating an account, you confirm that you have read, understood and agree to these Terms and our <a href="privacy-policy.html">Privacy Policy</a>.</p>
+    <p>If you do not agree to these Terms, you must not use the Service. By creating an account, you confirm that you have read, understood and agree to these Terms and our <a href="/privacy">Privacy Policy</a>.</p>
   </section>
 
   <!-- T2 -->
@@ -251,7 +251,7 @@ strong{color:#1a202c}
   <section id="t11">
     <h2 class="section-title"><span class="num">11</span> Your Content</h2>
     <p>Content you submit to NexGen Study (prompts, documents, text) remains yours. By submitting content, you grant us a limited, non-exclusive licence to process it solely for the purpose of providing the Service to you.</p>
-    <p>We do not store the content of your prompts or outputs beyond your session unless you explicitly save them. See our <a href="privacy-policy.html">Privacy Policy</a> for full details.</p>
+    <p>We do not store the content of your prompts or outputs beyond your session unless you explicitly save them. See our <a href="/privacy">Privacy Policy</a> for full details.</p>
     <p>You represent and warrant that you have the right to submit any content you provide, and that doing so does not violate the rights of any third party or any applicable law.</p>
   </section>
 
@@ -271,7 +271,7 @@ strong{color:#1a202c}
   <!-- T13 -->
   <section id="t13">
     <h2 class="section-title"><span class="num">13</span> Privacy</h2>
-    <p>Our collection and use of personal data is governed by our <a href="privacy-policy.html">Privacy Policy</a>, which is incorporated into these Terms by reference. By using the Service, you consent to our data practices as described in the Privacy Policy.</p>
+    <p>Our collection and use of personal data is governed by our <a href="/privacy">Privacy Policy</a>, which is incorporated into these Terms by reference. By using the Service, you consent to our data practices as described in the Privacy Policy.</p>
   </section>
 
   <!-- T14 -->
