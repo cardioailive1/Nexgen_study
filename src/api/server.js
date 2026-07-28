@@ -101,13 +101,21 @@ app.use('/api/users',         userRoutes);
 app.use('/api/webhooks',      webhookRoutes);
 app.use('/api/compliance',    complianceRoutes);
 
-// ── Serve static frontend ─────────────────────────────────────────
+// ── Serve static frontend + legal pages ──────────────────────────
 const frontendPath = path.join(__dirname, '../frontend/public');
 console.log('Serving frontend from:', frontendPath);
 app.use(express.static(frontendPath, {
   maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
   etag: true,
 }));
+
+// ── Legal pages ──────────────────────────────────────────────────
+app.get('/privacy-policy.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'privacy-policy.html'));
+});
+app.get('/terms-of-use.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'terms-of-use.html'));
+});
 
 // SPA fallback
 app.use('*', (req, res) => {
