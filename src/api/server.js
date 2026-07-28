@@ -109,12 +109,17 @@ app.use(express.static(frontendPath, {
   etag: true,
 }));
 
-// ── Legal pages ──────────────────────────────────────────────────
-app.get('/privacy-policy.html', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'privacy-policy.html'));
-});
-app.get('/terms-of-use.html', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'terms-of-use.html'));
+// ── Legal pages — all URL variants ───────────────────────────────
+const legalRoutes = [
+  '/privacy-policy.html', '/privacy-policy', '/privacy',
+  '/terms-of-use.html',   '/terms-of-use',   '/terms', '/tos'
+];
+
+legalRoutes.forEach(route => {
+  app.get(route, (req, res) => {
+    const file = route.includes('privacy') ? 'privacy-policy.html' : 'terms-of-use.html';
+    res.sendFile(path.join(frontendPath, file));
+  });
 });
 
 // SPA fallback
