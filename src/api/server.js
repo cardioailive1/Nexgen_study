@@ -301,6 +301,13 @@ async function ensureDatabase() {
       );
     `);
 
+    // Add APPLE to OAuthProvider enum if it doesn't exist
+    try {
+      await p.$executeRawUnsafe(`ALTER TYPE "OAuthProvider" ADD VALUE IF NOT EXISTS 'APPLE'`);
+    } catch(e) {
+      // Enum may not exist (plain TEXT columns) or APPLE already added — safe to ignore
+    }
+
     console.log('All database tables ready.');
     await p.$disconnect();
   } catch (err) {
