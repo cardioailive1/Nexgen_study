@@ -308,15 +308,20 @@ router.post('/apple', [
       return res.status(400).json({ error: 'Could not extract user ID from token' });
     }
 
-    // Find or create user
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { oauthProvider: 'APPLE', oauthProviderId: appleUserId },
-          ...(tokenEmail ? [{ email: tokenEmail }] : [])
-        ]
-      }
-    });
+    // Find or create user — raw SQL to bypass OAuthProvider enum
+    let userRows;
+    if (tokenEmail) {
+      userRows = await prisma.$queryRawUnsafe(
+        'SELECT * FROM "User" WHERE ("oauthProvider" = 'APPLE' AND "oauthProviderId" = $1) OR "email" = $2 LIMIT 1',
+        appleUserId, tokenEmail
+      );
+    } else {
+      userRows = await prisma.$queryRawUnsafe(
+        'SELECT * FROM "User" WHERE "oauthProvider" = 'APPLE' AND "oauthProviderId" = $1 LIMIT 1',
+        appleUserId
+      );
+    }
+    let user = userRows && userRows[0] ? userRows[0] : null;
 
     const now = new Date();
 
@@ -326,28 +331,26 @@ router.post('/apple', [
         ? fullName.trim()
         : (tokenEmail ? tokenEmail.split('@')[0] : 'NexGen User');
 
-      user = await prisma.user.create({
-        data: {
-          id:              uuidv4(),
-          email:           tokenEmail || `apple_${appleUserId}@private.appleid.com`,
-          emailVerified:   true,
-          emailVerifiedAt: now,
-          fullName:        userName,
-          plan:            'SCHOLAR',
-          oauthProvider:   'APPLE',
-          oauthProviderId: appleUserId,
-          subscriptionStatus: 'INACTIVE',
-          termsAcceptedAt: now,
-          privacyAcceptedAt: now,
-          updatedAt:       now,
-        }
-      });
+      const newId    = uuidv4();
+      const newEmail = tokenEmail || `apple_${appleUserId}@private.appleid.com`;
+      await prisma.$queryRawUnsafe(
+        `INSERT INTO "User" (id, email, "emailVerified", "emailVerifiedAt", "fullName", plan,
+          "oauthProvider", "oauthProviderId", "subscriptionStatus",
+          "termsAcceptedAt", "privacyAcceptedAt", "updatedAt", "createdAt",
+          "dailyUsageCount", "totalGenerations", "loginAttempts",
+          "mfaEnabled", "marketingConsent", "dataRetentionDays", "dailyUsageReset")
+         VALUES ($1,$2,true,$3,$4,'SCHOLAR','APPLE',$5,'INACTIVE',$6,$7,$8,$9,0,0,0,false,false,365,$10)`,
+        newId, newEmail, now, userName, appleUserId,
+        now, now, now, now, now
+      );
+      const created = await prisma.$queryRawUnsafe('SELECT * FROM "User" WHERE id = $1', newId);
+      user = created[0];
     } else if (!user.oauthProviderId || user.oauthProvider !== 'APPLE') {
       // Existing email account — link Apple ID
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
-          oauthProvider:   'APPLE',
+          oauthProvider:   'APPLE', // stored as TEXT in DB
           oauthProviderId: appleUserId,
           emailVerified:   true,
           updatedAt:       now,
@@ -356,10 +359,10 @@ router.post('/apple', [
     }
 
     // Update last login
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: now, lastLoginIp: req.ip, updatedAt: now }
-    });
+    await prisma.$queryRawUnsafe(
+      'UPDATE "User" SET "lastLoginAt"=$1, "lastLoginIp"=$2, "updatedAt"=$3 WHERE id=$4',
+      now, req.ip, now, user.id
+    );
 
     // Issue JWT
     const accessToken = jwt.sign(
@@ -399,7 +402,8 @@ router.post('/apple', [
     });
 
   } catch (err) {
-    next(err);
+    console.error('[Apple Sign In] Error:', err.message, err.stack);
+    return res.status(500).json({ error: 'Sign in failed: ' + err.message });
   }
 });
 
