@@ -312,12 +312,12 @@ router.post('/apple', [
     let userRows;
     if (tokenEmail) {
       userRows = await prisma.$queryRawUnsafe(
-        'SELECT * FROM "User" WHERE ("oauthProvider" = 'APPLE' AND "oauthProviderId" = $1) OR "email" = $2 LIMIT 1',
+        `SELECT * FROM "User" WHERE ("oauthProvider" = 'APPLE' AND "oauthProviderId" = $1) OR "email" = $2 LIMIT 1`,
         appleUserId, tokenEmail
       );
     } else {
       userRows = await prisma.$queryRawUnsafe(
-        'SELECT * FROM "User" WHERE "oauthProvider" = 'APPLE' AND "oauthProviderId" = $1 LIMIT 1',
+        `SELECT * FROM "User" WHERE "oauthProvider" = 'APPLE' AND "oauthProviderId" = $1 LIMIT 1`,
         appleUserId
       );
     }
