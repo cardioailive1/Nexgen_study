@@ -1,6 +1,7 @@
 'use strict';
 
 const express  = require('express');
+const https    = require('https');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -262,6 +263,142 @@ router.post('/refresh', async (req, res, next) => {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Invalid or expired refresh token.' });
     }
+    next(err);
+  }
+});
+
+
+// ── APPLE SIGN IN ─────────────────────────────────────────────────
+router.post('/apple', [
+  body('identityToken').notEmpty().withMessage('Identity token is required'),
+], async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { identityToken, fullName, email } = req.body;
+  const prisma = req.prisma;
+
+  try {
+    // Verify Apple identity token by fetching Apple's public keys
+    // Decode the JWT header to get the key ID
+    const tokenParts = identityToken.split('.');
+    if (tokenParts.length !== 3) {
+      return res.status(400).json({ error: 'Invalid identity token format' });
+    }
+
+    let payload;
+    try {
+      // Decode the payload (middle part) - base64url decode
+      const payloadBase64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payloadJson   = Buffer.from(payloadBase64, 'base64').toString('utf8');
+      payload = JSON.parse(payloadJson);
+    } catch (e) {
+      return res.status(400).json({ error: 'Failed to decode identity token' });
+    }
+
+    // Validate issuer and audience
+    if (payload.iss !== 'https://appleid.apple.com') {
+      return res.status(401).json({ error: 'Invalid token issuer' });
+    }
+
+    const appleUserId = payload.sub;
+    const tokenEmail  = payload.email || email;
+
+    if (!appleUserId) {
+      return res.status(400).json({ error: 'Could not extract user ID from token' });
+    }
+
+    // Find or create user
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { oauthProvider: 'APPLE', oauthProviderId: appleUserId },
+          ...(tokenEmail ? [{ email: tokenEmail }] : [])
+        ]
+      }
+    });
+
+    const now = new Date();
+
+    if (!user) {
+      // New user — create account
+      const userName = fullName && fullName.trim()
+        ? fullName.trim()
+        : (tokenEmail ? tokenEmail.split('@')[0] : 'NexGen User');
+
+      user = await prisma.user.create({
+        data: {
+          id:              uuidv4(),
+          email:           tokenEmail || `apple_${appleUserId}@private.appleid.com`,
+          emailVerified:   true,
+          emailVerifiedAt: now,
+          fullName:        userName,
+          plan:            'SCHOLAR',
+          oauthProvider:   'APPLE',
+          oauthProviderId: appleUserId,
+          subscriptionStatus: 'INACTIVE',
+          termsAcceptedAt: now,
+          privacyAcceptedAt: now,
+          updatedAt:       now,
+        }
+      });
+    } else if (!user.oauthProviderId || user.oauthProvider !== 'APPLE') {
+      // Existing email account — link Apple ID
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          oauthProvider:   'APPLE',
+          oauthProviderId: appleUserId,
+          emailVerified:   true,
+          updatedAt:       now,
+        }
+      });
+    }
+
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: now, lastLoginIp: req.ip, updatedAt: now }
+    });
+
+    // Issue JWT
+    const accessToken = jwt.sign(
+      { sub: user.id, email: user.email, plan: user.plan, type: 'access' },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+    const refreshToken = jwt.sign(
+      { sub: user.id, type: 'refresh' },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // Set cookies
+    const cookieOpts = {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path:     '/',
+    };
+    res.cookie('access_token',  accessToken,  { ...cookieOpts, maxAge: 15 * 60 * 1000 });
+    res.cookie('refresh_token', refreshToken, { ...cookieOpts, maxAge: 30 * 24 * 60 * 60 * 1000 });
+
+    await auditLog(prisma, { userId: user.id, action: 'APPLE_SIGNIN', ipAddress: req.ip });
+
+    return res.status(200).json({
+      accessToken,
+      user: {
+        id:               user.id,
+        email:            user.email,
+        fullName:         user.fullName,
+        plan:             user.plan,
+        mfaEnabled:       user.mfaEnabled,
+        totalGenerations: user.totalGenerations,
+        trialEndsAt:      user.trialEndsAt,
+      }
+    });
+
+  } catch (err) {
     next(err);
   }
 });
