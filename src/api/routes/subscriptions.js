@@ -4,86 +4,100 @@ const express = require('express');
 const stripe  = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { requireAuth } = require('../middleware/requireAuth');
 const { auditLog }    = require('../services/auditService');
-
 const router = express.Router();
 
-const PRICE_MAP = {
-  scholar:    process.env.STRIPE_PRICE_SCHOLAR,
-  researcher: process.env.STRIPE_PRICE_RESEARCHER,
-};
-
-// ── POST /api/subscriptions/checkout ──────────────────────────────
+// ── POST /api/subscriptions/checkout ─────────────────────────────
 router.post('/checkout', requireAuth, async (req, res, next) => {
   try {
     const { plan } = req.body;
-    if (!PRICE_MAP[plan]) return res.status(400).json({ error: 'Invalid plan.' });
+    const priceMap = {
+      scholar:    process.env.STRIPE_PRICE_SCHOLAR,
+      researcher: process.env.STRIPE_PRICE_RESEARCHER,
+    };
+    const priceId = priceMap[plan?.toLowerCase()];
 
-    const user   = req.user;
-    const prisma = req.prisma;
-
-    // Get or create Stripe customer
-    let customerId = user.stripeCustomerId;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email, name: user.fullName,
-        metadata: { userId: user.id, platform: 'nexgen-study' },
-      });
-      customerId = customer.id;
-      await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } });
+    // Fallback to direct Stripe links if price IDs not configured
+    if (!priceId || !process.env.STRIPE_SECRET_KEY) {
+      const links = {
+        scholar:    'https://buy.stripe.com/14A9AT9p83rfbDddjI1oI0k',
+        researcher: 'https://buy.stripe.com/dRm7sL7h09PDePpa7w1oI0l',
+      };
+      return res.json({ url: links[plan?.toLowerCase()] || null });
     }
 
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
-      line_items: [{ price: PRICE_MAP[plan], quantity: 1 }],
-      success_url: `${process.env.APP_URL}/?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${process.env.APP_URL}/?subscription=cancelled`,
-      metadata: { userId: user.id, plan },
-      subscription_data: {
-        trial_period_days: user.plan === 'TRIAL' ? 0 : undefined,
-        metadata: { userId: user.id, plan },
-      },
-      allow_promotion_codes: true,
+      mode:               'subscription',
+      payment_method_types: ['card'],
+      line_items:         [{ price: priceId, quantity: 1 }],
+      customer_email:     req.user.email,
+      client_reference_id: req.user.id,
+      success_url:        `${process.env.APP_URL || 'https://nexgen-study.onrender.com'}/?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:         `${process.env.APP_URL  || 'https://nexgen-study.onrender.com'}/?subscription=cancelled`,
+      metadata:           { userId: req.user.id, plan },
     });
 
-    await auditLog(prisma, { userId: user.id, action: 'CHECKOUT_INITIATED', metadata: { plan }, ipAddress: req.ip });
     res.json({ url: session.url });
   } catch (err) { next(err); }
 });
 
-// ── POST /api/subscriptions/portal ────────────────────────────────
-router.post('/portal', requireAuth, async (req, res, next) => {
+// ── POST /api/subscriptions/cancel ───────────────────────────────
+router.post('/cancel', requireAuth, async (req, res, next) => {
   try {
-    const user = req.user;
-    if (!user.stripeCustomerId) return res.status(400).json({ error: 'No active subscription found.' });
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { subscriptions: { where: { status: 'ACTIVE' }, take: 1 } }
+    });
 
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const sub = user.subscriptions?.[0];
+
+    if (sub?.stripeSubscriptionId && process.env.STRIPE_SECRET_KEY) {
+      // Cancel at period end via Stripe
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+        cancel_at_period_end: true
+      });
+
+      await req.prisma.subscription.update({
+        where: { id: sub.id },
+        data:  { cancelAtPeriodEnd: true, updatedAt: new Date() }
+      });
+    }
+
+    // Update user plan to reflect cancellation pending
+    await req.prisma.user.update({
+      where: { id: req.user.id },
+      data:  { subscriptionStatus: 'CANCELED', updatedAt: new Date() }
+    });
+
+    await auditLog(req.prisma, {
+      userId:    req.user.id,
+      action:    'SUBSCRIPTION_CANCELLED',
+      severity:  'INFO',
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      message: 'Subscription cancelled. You will retain access until the end of your current billing period.'
+    });
+  } catch (err) { next(err); }
+});
+
+// ── GET /api/subscriptions/portal ────────────────────────────────
+router.get('/portal', requireAuth, async (req, res, next) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.json({ url: 'https://billing.stripe.com/p/login' });
+    }
+    const user = await req.prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user?.stripeCustomerId) {
+      return res.status(400).json({ error: 'No billing account found.' });
+    }
     const session = await stripe.billingPortal.sessions.create({
       customer:   user.stripeCustomerId,
-      return_url: `${process.env.APP_URL}/account`,
+      return_url: process.env.APP_URL || 'https://nexgen-study.onrender.com',
     });
-
-    await auditLog(req.prisma, { userId: user.id, action: 'BILLING_PORTAL_ACCESSED', ipAddress: req.ip });
     res.json({ url: session.url });
-  } catch (err) { next(err); }
-});
-
-// ── GET /api/subscriptions/status ─────────────────────────────────
-router.get('/status', requireAuth, async (req, res, next) => {
-  try {
-    const user = req.user;
-    const sub  = await req.prisma.subscription.findFirst({
-      where:   { userId: user.id, status: { in: ['ACTIVE', 'TRIALING'] } },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({
-      plan: user.plan,
-      trialEndsAt: user.trialEndsAt,
-      subscription: sub ? {
-        status:           sub.status,
-        currentPeriodEnd: sub.currentPeriodEnd,
-        cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
-      } : null,
-    });
   } catch (err) { next(err); }
 });
 
