@@ -3,9 +3,6 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/requireAuth');
 const { auditLog }    = require('../services/auditService');
-const { body, validationResult } = require('express-validator');
-const bcrypt = require('bcryptjs');
-
 const router = express.Router();
 
 // ── GET /api/users/me ─────────────────────────────────────────────
@@ -14,55 +11,92 @@ router.get('/me', requireAuth, async (req, res, next) => {
     const user = await req.prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
-        id: true, email: true, fullName: true, avatarUrl: true,
-        plan: true, trialStartedAt: true, trialEndsAt: true,
-        subscriptionStatus: true, mfaEnabled: true,
-        emailVerified: true, createdAt: true, oauthProvider: true,
-        dailyUsageCount: true, totalGenerations: true,
+        id: true, email: true, fullName: true, plan: true,
+        mfaEnabled: true, totalGenerations: true,
+        trialEndsAt: true, subscriptionStatus: true,
+        emailVerified: true, createdAt: true,
       }
     });
-    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user });
   } catch (err) { next(err); }
 });
 
 // ── PUT /api/users/me ─────────────────────────────────────────────
-router.put('/me', requireAuth, [
-  body('fullName').optional().trim().isLength({ min: 2, max: 100 }),
-], async (req, res, next) => {
+router.put('/me', requireAuth, async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { fullName } = req.body;
-    const updated = await req.prisma.user.update({
+    const user = await req.prisma.user.update({
       where: { id: req.user.id },
-      data:  { ...(fullName && { fullName }) },
-      select: { id: true, email: true, fullName: true, plan: true },
+      data: { fullName, updatedAt: new Date() },
+      select: { id: true, email: true, fullName: true, plan: true, mfaEnabled: true, totalGenerations: true }
     });
-    await auditLog(req.prisma, { userId: req.user.id, action: 'PROFILE_UPDATED', ipAddress: req.ip });
-    res.json({ user: updated });
+    res.json({ user });
   } catch (err) { next(err); }
 });
 
-// ── PUT /api/users/me/password ────────────────────────────────────
-router.put('/me/password', requireAuth, [
-  body('currentPassword').notEmpty(),
-  body('newPassword').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
-], async (req, res, next) => {
+// ── DELETE /api/users/me ──────────────────────────────────────────
+router.delete('/me', requireAuth, async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    const userId = req.user.id;
 
-    const user = await req.prisma.user.findUnique({ where: { id: req.user.id } });
-    if (!user.passwordHash) return res.status(400).json({ error: 'OAuth accounts cannot change password here.' });
+    // Anonymise user data immediately
+    await req.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email:             `deleted_${userId}@deleted.corverxis.com`,
+        fullName:          'Deleted User',
+        passwordHash:      null,
+        oauthProvider:     null,
+        oauthProviderId:   null,
+        mfaSecret:         null,
+        mfaBackupCodes:    [],
+        deletedAt:         new Date(),
+        deletionRequestedAt: new Date(),
+        updatedAt:         new Date(),
+      }
+    });
 
-    const valid = await bcrypt.compare(req.body.currentPassword, user.passwordHash);
-    if (!valid) return res.status(401).json({ error: 'Current password is incorrect.' });
+    // Delete all sessions
+    await req.prisma.session.deleteMany({ where: { userId } });
 
-    const newHash = await bcrypt.hash(req.body.newPassword, parseInt(process.env.BCRYPT_ROUNDS || '12'));
-    await req.prisma.user.update({ where: { id: req.user.id }, data: { passwordHash: newHash } });
-    await auditLog(req.prisma, { userId: req.user.id, action: 'PASSWORD_CHANGED', severity: 'WARN', ipAddress: req.ip });
-    res.json({ message: 'Password updated successfully.' });
+    // Log
+    await auditLog(req.prisma, {
+      userId,
+      action:   'ACCOUNT_DELETED',
+      severity: 'WARN',
+      ipAddress: req.ip,
+    });
+
+    // Clear cookies
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+
+    res.json({ message: 'Account deleted successfully.' });
+  } catch (err) { next(err); }
+});
+
+// ── GET /api/users/export ─────────────────────────────────────────
+router.get('/export', requireAuth, async (req, res, next) => {
+  try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { generations: { orderBy: { createdAt: 'desc' }, take: 100 } }
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({
+      exportedAt: new Date().toISOString(),
+      user: {
+        id: user.id, email: user.email, fullName: user.fullName,
+        plan: user.plan, createdAt: user.createdAt,
+        totalGenerations: user.totalGenerations,
+      },
+      generations: user.generations.map(g => ({
+        tool: g.tool, subTool: g.subTool, model: g.model,
+        inputTokens: g.inputTokens, outputTokens: g.outputTokens,
+        createdAt: g.createdAt,
+      }))
+    });
   } catch (err) { next(err); }
 });
 
