@@ -157,6 +157,24 @@ async function ensureDatabase() {
     await p.$connect();
     console.log('Database connected.');
 
+    // Add APPLE to OAuthProvider enum FIRST before anything else
+    try {
+      await p.$executeRawUnsafe(`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_enum
+            WHERE enumlabel = 'APPLE'
+            AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'OAuthProvider')
+          ) THEN
+            ALTER TYPE "OAuthProvider" ADD VALUE 'APPLE';
+          END IF;
+        END $$
+      `);
+      console.log('OAuthProvider enum updated.');
+    } catch(enumErr) {
+      console.warn('Enum update skipped (may use TEXT columns):', enumErr.message);
+    }
+
     // Run raw SQL to create all tables if they don't exist
     await p.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "User" (
