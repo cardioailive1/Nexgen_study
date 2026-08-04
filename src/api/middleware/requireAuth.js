@@ -2,35 +2,38 @@
 
 const jwt = require('jsonwebtoken');
 
-async function requireAuth(req, res, next) {
+function requireAuth(req, res, next) {
   try {
-    // Accept token from Authorization header or httpOnly cookie
-    let token = req.cookies?.access_token;
+    // Try Bearer header first, then cookie
     const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) token = authHeader.slice(7);
+    let token;
 
-    if (!token) return res.status(401).json({ error: 'Authentication required.' });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    }
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    if (payload.type !== 'access') return res.status(401).json({ error: 'Invalid token type.' });
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
 
-    const user = await req.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || user.deletedAt) return res.status(401).json({ error: 'User not found.' });
-
-    req.user = user;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = { id: decoded.sub, email: decoded.email, plan: decoded.plan };
     next();
   } catch (err) {
-    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Session expired. Please sign in again.' });
     }
-    next(err);
+    return res.status(401).json({ error: 'Invalid authentication token.' });
   }
 }
 
 function requirePlan(...plans) {
   return (req, res, next) => {
-    if (!plans.includes(req.user?.plan)) {
-      return res.status(403).json({ error: `This feature requires a ${plans.join(' or ')} plan.` });
+    if (!req.user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!plans.includes(req.user.plan)) {
+      return res.status(403).json({ error: 'Please upgrade your plan to access this feature.' });
     }
     next();
   };
