@@ -101,4 +101,127 @@ router.get('/portal', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+// ── POST /api/subscriptions/apple-verify ─────────────────────────
+// Called by iOS app after successful Apple In-App Purchase
+// Verifies the receipt and updates user subscription status in DB
+router.post('/apple-verify', requireAuth, async (req, res, next) => {
+  try {
+    const { receiptData, productId } = req.body;
+
+    if (!receiptData) {
+      return res.status(400).json({ error: 'Receipt data is required.' });
+    }
+
+    // Map product IDs to plans
+    const productPlanMap = {
+      'com.corverxis.nexgenstudy.scholar':    'SCHOLAR',
+      'com.corverxis.nexgenstudy.researcher': 'RESEARCHER',
+      'nexgenstudy.scholar.monthly':          'SCHOLAR',
+      'nexgenstudy.researcher.monthly':       'RESEARCHER',
+    };
+
+    // Verify receipt with Apple
+    const verifyWithApple = async (url) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receiptData,
+          password: process.env.APPLE_SHARED_SECRET || '',
+          'exclude-old-transactions': true,
+        }),
+      });
+      return response.json();
+    };
+
+    // Try production first, fall back to sandbox
+    let appleResponse = await verifyWithApple('https://buy.itunes.apple.com/verifyReceipt');
+
+    // Status 21007 means it's a sandbox receipt
+    if (appleResponse.status === 21007) {
+      appleResponse = await verifyWithApple('https://sandbox.itunes.apple.com/verifyReceipt');
+    }
+
+    // Apple verification failed
+    if (appleResponse.status !== 0) {
+      console.error('[Apple IAP] Verification failed, status:', appleResponse.status);
+      return res.status(400).json({
+        error: 'Receipt verification failed.',
+        appleStatus: appleResponse.status,
+      });
+    }
+
+    // Get the latest receipt info
+    const latestReceipts = appleResponse.latest_receipt_info || [];
+    const latestReceipt  = latestReceipts[latestReceipts.length - 1];
+
+    if (!latestReceipt) {
+      return res.status(400).json({ error: 'No valid purchase found in receipt.' });
+    }
+
+    // Determine plan from product ID
+    const purchasedProductId = productId || latestReceipt.product_id;
+    const plan = productPlanMap[purchasedProductId];
+
+    if (!plan) {
+      return res.status(400).json({
+        error: 'Unknown product ID: ' + purchasedProductId,
+      });
+    }
+
+    // Check subscription is still active
+    const expiresDateMs = parseInt(latestReceipt.expires_date_ms || '0');
+    const isActive      = expiresDateMs > Date.now();
+
+    if (!isActive) {
+      return res.status(400).json({ error: 'Subscription has expired.' });
+    }
+
+    const expiresAt = new Date(expiresDateMs);
+    const now       = new Date();
+
+    // Update user subscription in database
+    await req.prisma.$queryRawUnsafe(`
+      UPDATE "User"
+      SET plan               = $1,
+          "subscriptionStatus" = 'ACTIVE',
+          "trialEndsAt"      = NULL,
+          "updatedAt"        = $2
+      WHERE id = $3
+    `, plan, now, req.user.id);
+
+    // Log the subscription event
+    const { auditLog } = require('../services/auditService');
+    await auditLog(req.prisma, {
+      userId:    req.user.id,
+      action:    'APPLE_IAP_VERIFIED',
+      severity:  'INFO',
+      metadata:  { plan, productId: purchasedProductId, expiresAt },
+      ipAddress: req.ip,
+    });
+
+    console.log(`[Apple IAP] User ${req.user.id} upgraded to ${plan}, expires ${expiresAt}`);
+
+    // Return updated user
+    const userRows = await req.prisma.$queryRawUnsafe(
+      `SELECT id, email, "fullName", plan, "subscriptionStatus", "mfaEnabled", "totalGenerations", "trialEndsAt"
+       FROM "User" WHERE id = $1`,
+      req.user.id
+    );
+
+    res.json({
+      success: true,
+      plan,
+      subscriptionStatus: 'ACTIVE',
+      expiresAt,
+      user: userRows[0] || null,
+    });
+
+  } catch (err) {
+    console.error('[Apple IAP] Error:', err.message);
+    next(err);
+  }
+});
+
 module.exports = router;
