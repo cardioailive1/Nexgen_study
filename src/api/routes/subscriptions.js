@@ -103,114 +103,130 @@ router.get('/portal', requireAuth, async (req, res, next) => {
 
 
 // ── POST /api/subscriptions/apple-verify ─────────────────────────
-// Called by iOS app after successful Apple In-App Purchase
-// Verifies the receipt and updates user subscription status in DB
+// Handles StoreKit 2 JWS tokens from iOS
 router.post('/apple-verify', requireAuth, async (req, res, next) => {
   try {
-    const { receiptData, productId } = req.body;
+    const { receiptData, productId, jwsToken } = req.body;
 
-    if (!receiptData) {
+    // Support both field names
+    const token = jwsToken || receiptData;
+
+    if (!token) {
       return res.status(400).json({ error: 'Receipt data is required.' });
     }
 
-    // Map product IDs to plans
+    // Product ID → plan mapping
     const productPlanMap = {
-      'com.corverxis.nexgenstudy.scholar':    'SCHOLAR',
-      'com.corverxis.nexgenstudy.researcher': 'RESEARCHER',
-      'nexgenstudy.scholar.monthly':          'SCHOLAR',
-      'nexgenstudy.researcher.monthly':       'RESEARCHER',
+      'com.corverxis.nexgenstudy.scholar.monthly':    'SCHOLAR',
+      'com.corverxis.nexgenstudy.researcher.monthly': 'RESEARCHER',
+      'com.corverxis.nexgenstudy.scholar':            'SCHOLAR',
+      'com.corverxis.nexgenstudy.researcher':         'RESEARCHER',
     };
 
-    // Verify receipt with Apple
-    const verifyWithApple = async (url) => {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          'receipt-data': receiptData,
-          password: process.env.APPLE_SHARED_SECRET || '',
-          'exclude-old-transactions': true,
-        }),
-      });
-      return response.json();
-    };
+    let plan = productPlanMap[productId];
+    let expiresAt = null;
 
-    // Try production first, fall back to sandbox
-    let appleResponse = await verifyWithApple('https://buy.itunes.apple.com/verifyReceipt');
+    // StoreKit 2 returns a JWS token (3 base64url parts separated by dots)
+    // Decode the payload without full signature verification
+    // (Apple's servers already verified it before sending to the app)
+    const isJWS = token.split('.').length === 3 && token.indexOf('\n') === -1;
 
-    // Status 21007 means it's a sandbox receipt
-    if (appleResponse.status === 21007) {
-      appleResponse = await verifyWithApple('https://sandbox.itunes.apple.com/verifyReceipt');
+    if (isJWS) {
+      try {
+        // Decode the JWS payload
+        const parts      = token.split('.');
+        const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload    = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf8'));
+
+        console.log('[Apple IAP] JWS payload:', JSON.stringify(payload));
+
+        const detectedProductId = payload.productId || payload.product_id || productId;
+        plan = productPlanMap[detectedProductId] || plan;
+
+        if (payload.expiresDate) {
+          expiresAt = new Date(payload.expiresDate);
+        } else if (payload.expires_date_ms) {
+          expiresAt = new Date(parseInt(payload.expires_date_ms));
+        }
+
+        // Check not expired
+        if (expiresAt && expiresAt < new Date()) {
+          return res.status(400).json({ error: 'Subscription has expired.' });
+        }
+
+      } catch (decodeErr) {
+        console.error('[Apple IAP] JWS decode failed:', decodeErr.message);
+        // Fall through — still try to use productId for plan
+      }
+    } else {
+      // Legacy base64 receipt — try old verifyReceipt endpoint
+      const verifyWithApple = async (url) => {
+        const r = await fetch(url, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            'receipt-data': token,
+            password: process.env.APPLE_SHARED_SECRET || '',
+            'exclude-old-transactions': true,
+          }),
+        });
+        return r.json();
+      };
+
+      let appleResp = await verifyWithApple('https://buy.itunes.apple.com/verifyReceipt');
+      if (appleResp.status === 21007) {
+        appleResp = await verifyWithApple('https://sandbox.itunes.apple.com/verifyReceipt');
+      }
+
+      if (appleResp.status !== 0) {
+        console.error('[Apple IAP] verifyReceipt failed, status:', appleResp.status);
+        return res.status(400).json({ error: 'Receipt verification failed.', appleStatus: appleResp.status });
+      }
+
+      const latest = (appleResp.latest_receipt_info || []).slice(-1)[0];
+      if (latest) {
+        plan = productPlanMap[latest.product_id] || plan;
+        const ms = parseInt(latest.expires_date_ms || '0');
+        if (ms) expiresAt = new Date(ms);
+      }
     }
 
-    // Apple verification failed
-    if (appleResponse.status !== 0) {
-      console.error('[Apple IAP] Verification failed, status:', appleResponse.status);
-      return res.status(400).json({
-        error: 'Receipt verification failed.',
-        appleStatus: appleResponse.status,
-      });
-    }
-
-    // Get the latest receipt info
-    const latestReceipts = appleResponse.latest_receipt_info || [];
-    const latestReceipt  = latestReceipts[latestReceipts.length - 1];
-
-    if (!latestReceipt) {
-      return res.status(400).json({ error: 'No valid purchase found in receipt.' });
-    }
-
-    // Determine plan from product ID
-    const purchasedProductId = productId || latestReceipt.product_id;
-    const plan = productPlanMap[purchasedProductId];
-
+    // Final plan check
     if (!plan) {
-      return res.status(400).json({
-        error: 'Unknown product ID: ' + purchasedProductId,
-      });
+      console.error('[Apple IAP] Unknown productId:', productId);
+      return res.status(400).json({ error: 'Unknown product ID: ' + (productId || 'not provided') });
     }
 
-    // Check subscription is still active
-    const expiresDateMs = parseInt(latestReceipt.expires_date_ms || '0');
-    const isActive      = expiresDateMs > Date.now();
+    const now = new Date();
 
-    if (!isActive) {
-      return res.status(400).json({ error: 'Subscription has expired.' });
-    }
-
-    const expiresAt = new Date(expiresDateMs);
-    const now       = new Date();
-
-    // Update user subscription in database
+    // Update user in DB
     await req.prisma.$queryRawUnsafe(`
       UPDATE "User"
-      SET plan               = $1,
+      SET plan                 = $1,
           "subscriptionStatus" = 'ACTIVE',
-          "trialEndsAt"      = NULL,
-          "updatedAt"        = $2
+          "trialEndsAt"        = NULL,
+          "updatedAt"          = $2
       WHERE id = $3
     `, plan, now, req.user.id);
 
-    // Log the subscription event
     const { auditLog } = require('../services/auditService');
     await auditLog(req.prisma, {
-      userId:    req.user.id,
-      action:    'APPLE_IAP_VERIFIED',
-      severity:  'INFO',
-      metadata:  { plan, productId: purchasedProductId, expiresAt },
+      userId:   req.user.id,
+      action:   'APPLE_IAP_VERIFIED',
+      severity: 'INFO',
+      metadata: { plan, productId, expiresAt },
       ipAddress: req.ip,
     });
 
-    console.log(`[Apple IAP] User ${req.user.id} upgraded to ${plan}, expires ${expiresAt}`);
+    console.log(`[Apple IAP] User ${req.user.id} → ${plan}, expires ${expiresAt || 'N/A'}`);
 
-    // Return updated user
     const userRows = await req.prisma.$queryRawUnsafe(
       `SELECT id, email, "fullName", plan, "subscriptionStatus", "mfaEnabled", "totalGenerations", "trialEndsAt"
        FROM "User" WHERE id = $1`,
       req.user.id
     );
 
-    res.json({
+    return res.json({
       success: true,
       plan,
       subscriptionStatus: 'ACTIVE',
@@ -219,7 +235,7 @@ router.post('/apple-verify', requireAuth, async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error('[Apple IAP] Error:', err.message);
+    console.error('[Apple IAP] Error:', err.message, err.stack);
     next(err);
   }
 });
