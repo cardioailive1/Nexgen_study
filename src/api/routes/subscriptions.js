@@ -206,8 +206,8 @@ router.post('/apple-verify', requireAuth, async (req, res, next) => {
     // Update user in DB
     await req.prisma.$queryRawUnsafe(`
       UPDATE "User"
-      SET plan                 = $1,
-          "subscriptionStatus" = 'ACTIVE',
+      SET plan                 = $1::"Plan",
+          "subscriptionStatus" = 'ACTIVE'::"SubscriptionStatus",
           "trialEndsAt"        = NULL,
           "updatedAt"          = $2
       WHERE id = $3
