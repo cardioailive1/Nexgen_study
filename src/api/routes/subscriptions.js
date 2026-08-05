@@ -121,6 +121,10 @@ router.post('/apple-verify', requireAuth, async (req, res, next) => {
       'com.corverxis.nexgenstudy.researcher.monthly': 'RESEARCHER',
       'com.corverxis.nexgenstudy.scholar':            'SCHOLAR',
       'com.corverxis.nexgenstudy.researcher':         'RESEARCHER',
+      'nexgen.study.scholar.monthly':                 'SCHOLAR',
+      'nexgen.study.researcher.monthly':              'RESEARCHER',
+      'nexgen.study.scholar':                         'SCHOLAR',
+      'nexgen.study.researcher':                      'RESEARCHER',
     };
 
     let plan = productPlanMap[productId];
